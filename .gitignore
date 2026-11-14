@@ -2,5 +2,11 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.db
-uploads/test_upload.pptx
+uploads/*
+!uploads/.gitkeep
 .env
+
+# Local backups and templates
+backup_*/
+stitch_design/
+template_astronomy/

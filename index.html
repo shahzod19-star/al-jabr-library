@@ -8,7 +8,7 @@
   <!-- Inter, JetBrains Mono & Cairo Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Poppins:wght@700;800;900&display=swap" rel="stylesheet" />
 
   <!-- FontAwesome Icons -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
@@ -23,17 +23,20 @@
           fontFamily: {
             sans: ['Inter', 'sans-serif'],
             mono: ['JetBrains Mono', 'monospace'],
+            display: ['Poppins', 'Inter', 'sans-serif'],
           },
           colors: {
             brand: {
               50: '#ecfdf5',
               100: '#d1fae5',
+              300: '#6ee7b7',
               400: '#34d399',
               500: '#10b981',
               600: '#059669',
               700: '#047857',
               800: '#065f46',
               900: '#064e3b',
+              950: '#022c22',
             },
             obsidian: {
               950: '#06090e',
@@ -52,7 +55,7 @@
           boxShadow: {
             'glow-emerald': '0 0 25px -4px rgba(16, 185, 129, 0.25)',
             'glow-cyan': '0 0 25px -4px rgba(6, 182, 212, 0.25)',
-            'card-hover': '0 12px 30px -10px rgba(0, 0, 0, 0.7), 0 0 15px 1px rgba(16, 185, 129, 0.15)',
+            'card-hover': '0 14px 32px -10px rgba(0, 0, 0, 0.7), 0 0 16px 1px rgba(16, 185, 129, 0.2)',
           }
         }
       }
@@ -71,12 +74,12 @@
       font-family: 'Cairo', sans-serif;
     }
     
-    /* Radial mesh background from Stitch */
+    /* Radial mesh background */
     .bg-mesh-radial {
-      background: radial-gradient(circle at 50% -10%, rgba(16, 185, 129, 0.12) 0%, rgba(6, 182, 212, 0.05) 30%, transparent 70%),
-                  radial-gradient(circle at 80% 40%, rgba(16, 185, 129, 0.04) 0%, transparent 50%),
-                  radial-gradient(circle at 20% 60%, rgba(6, 182, 212, 0.03) 0%, transparent 50%),
-                  #080c14;
+      background: radial-gradient(circle at 50% -10%, rgba(16, 185, 129, 0.14) 0%, rgba(6, 182, 212, 0.06) 35%, transparent 70%),
+                  radial-gradient(circle at 85% 45%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                  radial-gradient(circle at 15% 65%, rgba(6, 182, 212, 0.04) 0%, transparent 50%),
+                  #070b12;
     }
     .light .bg-mesh-radial, :root:not(.dark) .bg-mesh-radial {
       background: radial-gradient(circle at 50% -10%, rgba(16, 185, 129, 0.08) 0%, rgba(6, 182, 212, 0.04) 30%, transparent 70%),
@@ -85,18 +88,18 @@
 
     /* Glass card backdrop */
     .glass-panel {
-      background: rgba(14, 22, 35, 0.78);
+      background: rgba(14, 22, 35, 0.82);
       backdrop-filter: blur(14px);
       -webkit-backdrop-filter: blur(14px);
       border: 1px solid rgba(255, 255, 255, 0.08);
     }
     :root:not(.dark) .glass-panel {
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.90);
       border: 1px solid rgba(0, 0, 0, 0.08);
     }
     
     .glass-input {
-      background: rgba(10, 15, 24, 0.85);
+      background: rgba(10, 15, 24, 0.88);
       border: 1px solid rgba(255, 255, 255, 0.12);
       box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4);
     }
@@ -112,7 +115,7 @@
       height: 7px;
     }
     ::-webkit-scrollbar-track {
-      background: #080c14;
+      background: #070b12;
     }
     ::-webkit-scrollbar-thumb {
       background: #1e2c42;
@@ -123,15 +126,11 @@
     }
 
     mark {
-      background-color: #fef08a;
-      color: #854d0e;
+      background-color: #10b981;
+      color: #06090e;
       padding: 0 4px;
       border-radius: 4px;
-      font-weight: 600;
-    }
-    .dark mark {
-      background-color: #854d0e;
-      color: #fef08a;
+      font-weight: 700;
     }
     .slide-content-text {
       white-space: pre-wrap;
@@ -140,12 +139,23 @@
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Canvas styling */
+    #heroBubbleCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+      pointer-events: auto;
+    }
   </style>
 </head>
 <body class="bg-mesh-radial text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-brand-500 selection:text-white transition-colors duration-200">
 
-  <!-- Global Header -->
-  <header class="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-obsidian-900/85 dark:bg-obsidian-900/85 backdrop-blur-md transition-all">
+  <!-- =================================================================== HEADER -->
+  <header class="sticky top-0 z-40 w-full border-b border-slate-800/80 bg-obsidian-900/85 backdrop-blur-md transition-all">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
       
       <!-- Brand & Identity -->
@@ -167,10 +177,10 @@
       </div>
 
       <!-- Center Navigation Links -->
-      <nav class="hidden lg:flex items-center space-x-1 lg:space-x-3 bg-obsidian-850/80 px-3 py-1.5 rounded-full border border-slate-800 text-sm font-medium text-slate-300">
-        <a class="px-3 py-1.5 rounded-full text-brand-400 bg-brand-500/10 transition-colors" href="#catalog" data-i18n="shelfTitle">Darsliklar Javoni</a>
-        <a class="px-3 py-1.5 rounded-full hover:text-white hover:bg-slate-800/60 transition-colors" href="#metrics">Statistika</a>
-        <a class="px-3 py-1.5 rounded-full hover:text-white hover:bg-slate-800/60 transition-colors" href="#standards">Xavfsizlik Standartlari</a>
+      <nav class="hidden md:flex items-center space-x-1 lg:space-x-3 bg-obsidian-850/80 px-3 py-1.5 rounded-full border border-slate-800 text-sm font-medium text-slate-300">
+        <a class="px-3.5 py-1.5 rounded-full text-brand-400 bg-brand-500/10 transition-colors font-semibold" href="#catalog" data-i18n="shelfTitle">Darsliklar Javoni</a>
+        <a class="px-3.5 py-1.5 rounded-full hover:text-white hover:bg-slate-800/60 transition-colors" href="#metrics">Statistika</a>
+        <a class="px-3.5 py-1.5 rounded-full hover:text-white hover:bg-slate-800/60 transition-colors" href="#footerSignature">Loyiha Muallifi</a>
       </nav>
 
       <!-- Right Utility Bar -->
@@ -212,10 +222,10 @@
     </div>
   </header>
 
-  <!-- Main Content Body -->
+  <!-- =================================================================== MAIN CONTENT -->
   <main class="flex-grow">
     
-    <!-- Hero & Interactive Search Section -->
+    <!-- Hero & Interactive Landing Page Section -->
     <section class="relative pt-10 sm:pt-14 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 overflow-hidden border-b border-slate-800/80">
       <!-- Ambient Glow decoration elements -->
       <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[280px] bg-brand-500/10 blur-[120px] rounded-full pointer-events-none -z-10"></div>
@@ -223,20 +233,31 @@
       <div class="max-w-4xl mx-auto text-center">
         
         <!-- Slogan Badge -->
-        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-950/70 border border-brand-500/30 text-brand-300 text-xs font-medium tracking-wide shadow-glow-emerald mb-5 sm:mb-6">
+        <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-brand-950/70 border border-brand-500/30 text-brand-300 text-xs font-medium tracking-wide shadow-glow-emerald mb-4">
           <i class="fa-solid fa-bolt text-brand-400 text-xs"></i>
           <span data-i18n="slogan">Qayta tiklanuvchi energiya va fan darsliklari portali</span>
         </div>
 
         <!-- Hero Headline -->
-        <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-3 sm:mb-4" data-i18n="heroTitle">
+        <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white mb-3" data-i18n="heroTitle">
           Ilm va Energetika <span class="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">Bilimlar Bazasi</span>
         </h1>
 
         <!-- Hero Subheadline -->
-        <p class="text-sm sm:text-lg text-slate-300/90 max-w-2xl mx-auto font-normal leading-relaxed mb-8" data-i18n="heroSubtitle">
+        <p class="text-sm sm:text-base text-slate-300/90 max-w-2xl mx-auto font-normal leading-relaxed mb-6" data-i18n="heroSubtitle">
           Darsliklarni qidiring va to'g'ridan-to'g'ri o'qing — ortiqcha fayl yuklab olmaysiz
         </p>
+
+        <!-- Interactive AL-JABR Bubble Canvas Wordmark on Landing Page -->
+        <div class="relative w-full max-w-3xl mx-auto h-40 sm:h-56 mb-8 rounded-2xl overflow-hidden border border-slate-800/90 bg-obsidian-950/90 shadow-2xl group">
+          <canvas id="heroBubbleCanvas" class="cursor-crosshair"></canvas>
+          <div class="absolute bottom-3 right-4 z-10 pointer-events-none flex items-center gap-2">
+            <span class="inline-flex items-center gap-1.5 text-[11px] font-mono font-medium text-emerald-400 bg-obsidian-900/90 px-3 py-1 rounded-full border border-emerald-500/30 shadow-sm backdrop-blur-sm">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              Pufakchalarni bosing · <b id="popCounterBadge" class="font-bold text-white">0 ta yorildi</b>
+            </span>
+          </div>
+        </div>
 
         <!-- Advanced Search Box with Shortcut Key and Clear Button -->
         <div class="relative max-w-3xl mx-auto group text-left">
@@ -397,13 +418,13 @@
 
   </main>
 
-  <!-- Interactive Slide Reader Modal (Full-Screen Presentation Optimized) -->
+  <!-- =================================================================== PRESENTATION VIEWER (READER MODAL) -->
   <div id="readerModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex flex-col h-[100dvh]">
     
     <!-- Reader Top Bar -->
     <div class="bg-obsidian-900 border-b border-slate-800 px-4 sm:px-6 py-3 flex items-center justify-between shadow-lg shrink-0">
       <div class="flex items-center space-x-3 truncate">
-        <span id="readerBadge" class="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+        <span id="readerBadge" class="px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 font-mono">
           PPTX
         </span>
         <div class="truncate">
@@ -564,19 +585,49 @@
 
   </div>
 
-  <!-- Footer -->
-  <footer class="border-t border-slate-800/80 bg-obsidian-950/90 py-10 px-4 sm:px-6 lg:px-8 mt-auto text-xs text-slate-400">
-    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-      <div class="flex items-center space-x-2">
-        <span class="font-bold text-white tracking-wide">al-jabr.library</span>
-        <span>—</span>
-        <span data-i18n="slogan">Qayta tiklanuvchi energiya va fan darsliklari portali</span>
+  <!-- Image Lightbox Modal -->
+  <div id="imageLightboxModal" class="hidden fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer" onclick="closeImageLightbox()">
+    <button onclick="closeImageLightbox()" class="absolute top-4 right-4 text-white hover:text-rose-400 text-2xl font-bold w-10 h-10 flex items-center justify-center">✕</button>
+    <img id="lightboxImg" src="" alt="Enlarged" class="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
+  </div>
+
+  <!-- =================================================================== FOOTER -->
+  <footer class="border-t border-slate-800/80 bg-obsidian-950/95 py-12 px-4 sm:px-6 lg:px-8 mt-auto text-xs text-slate-400" id="footerSignature">
+    <div class="max-w-7xl mx-auto flex flex-col items-center gap-6 text-center">
+      
+      <!-- Prominent User Signature as Requested -->
+      <div class="p-5 sm:p-6 rounded-2xl glass-panel border border-brand-500/30 max-w-xl w-full flex flex-col items-center gap-2 shadow-glow-emerald">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-bold uppercase tracking-wider bg-brand-500/20 text-brand-300 border border-brand-500/40">
+          <i class="fa-solid fa-code text-xs"></i>
+          Loyiha Muallifi &amp; Dasturchisi
+        </span>
+        <div class="text-base sm:text-lg font-bold text-white mt-1">
+          Created by <a href="mailto:shahzodabduhalilov16@gmail.com" class="text-brand-400 hover:text-brand-300 underline underline-offset-4 font-mono transition-colors">shahzodabduhalilov16@gmail.com</a>
+        </div>
+        <p class="text-slate-400 text-xs max-w-md">
+          Shirin Energetika Texnikumi va ACWA Power "Al-Jabr" xalqaro ta'lim dasturi uchun yaratilgan darsliklar portali
+        </p>
       </div>
-      <div class="flex items-center space-x-6">
-        <span>© 2026 Shirin Energy Technical College</span>
-        <a class="hover:text-white transition-colors" href="/admin">Kutubxonachi Portali</a>
-        <a class="hover:text-white transition-colors" href="mailto:shahzodabduhalilov16@gmail.com">Bog'lanish</a>
+
+      <!-- Links & Copyright -->
+      <div class="flex flex-wrap items-center justify-center gap-6 text-slate-400 pt-2">
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-white tracking-wide">al-jabr.library</span>
+          <span>—</span>
+          <span data-i18n="slogan">Qayta tiklanuvchi energiya va fan darsliklari portali</span>
+        </div>
+        <div class="flex items-center space-x-4">
+          <a class="hover:text-brand-400 transition-colors" href="#catalog">Darsliklar</a>
+          <a class="hover:text-brand-400 transition-colors" href="#metrics">Statistika</a>
+          <a class="hover:text-brand-400 transition-colors" href="/admin">Kutubxonachi Portali</a>
+          <a class="hover:text-brand-400 transition-colors" href="mailto:shahzodabduhalilov16@gmail.com">Bog'lanish</a>
+        </div>
       </div>
+
+      <p class="text-slate-500 text-[11px] font-mono">
+        © 2026 Shirin Energy Technical College · Barcha huquqlar himoyalangan
+      </p>
+
     </div>
   </footer>
 
