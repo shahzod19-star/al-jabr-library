@@ -1,12 +1,4 @@
-/**
- * al-jabr.library — Shirin Energy Technical College
- * Technical Knowledge Base & Presentation Reader
- * Created by shahzodabduhalilov16@gmail.com
- */
-
-// =====================================================================
-// GLOBAL STATE & CONSTANTS
-// =====================================================================
+// --- State Management ---
 let currentBooks = [];
 let searchMode = 'all'; // 'all', 'content', 'title'
 let currentSearchQuery = '';
@@ -22,44 +14,20 @@ let currentTheme = localStorage.getItem("aljabr_theme") || "dark";
 let currentReadingBook = null;
 let currentSlideIndex = 0; // 0-based
 let currentFontSize = 16; // px
+
+// Touch Gestures
 let touchStartX = 0;
 let touchStartY = 0;
 
-// Pop Counter
-let popCount = parseInt(localStorage.getItem("aljabr_pops") || "0", 10);
-
-// College Brand Colors for Hero Bubble Engine
-const BUBBLE_COLORS = [
-  "#064e3b", // Emerald dark
-  "#059669", // Emerald medium
-  "#10b981", // Emerald bright
-  "#34d399", // Emerald mint
-  "#06b6d4", // Cyan
-  "#0d9488", // Teal
-  "#14b8a6", // Teal light
-  "#38bdf8", // Sky blue
-  "#6ee7b7", // Mint soft
-  "#047857", // Forest green
-];
-
-// =====================================================================
-// INITIALIZATION
-// =====================================================================
+// --- Init on Load ---
 document.addEventListener("DOMContentLoaded", () => {
   // Apply initial theme & language
   applyTheme(currentTheme);
   applyLanguage(currentLang);
-
   const langSelect = document.getElementById("langSelect");
   if (langSelect) langSelect.value = currentLang;
 
-  // Initialize pop counter display
-  updatePopBadge();
-
-  // Initialize Landing Page Interactive Bubble Canvas
-  initHeroBubbleCanvas();
-
-  // Fetch books from backend
+  // Fetch books
   fetchBooks().then(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const readBookId = urlParams.get('read');
@@ -74,7 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
     searchInput.addEventListener("input", (e) => {
       const val = e.target.value.trim();
       currentSearchQuery = val;
-
+      
       const clearBtn = document.getElementById("clearSearchBtn");
       if (clearBtn) clearBtn.classList.toggle("hidden", !val);
 
@@ -89,8 +57,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Keyboard shortcuts (Ctrl+K, arrows, Esc)
+  // Global Keyboard shortcuts: Ctrl+K / Cmd+K and Arrow keys for reader
   window.addEventListener("keydown", (e) => {
+    // Ctrl+K / Cmd+K to search
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
       const input = document.getElementById('searchInput');
@@ -116,9 +85,8 @@ document.addEventListener("DOMContentLoaded", () => {
   setupTouchGestures();
 });
 
-// =====================================================================
-// THEME MANAGEMENT
-// =====================================================================
+// --- Theme Management ---
+
 function applyTheme(theme) {
   currentTheme = theme;
   localStorage.setItem("aljabr_theme", theme);
@@ -139,294 +107,78 @@ function toggleTheme() {
   applyTheme(next);
 }
 
-// =====================================================================
-// INTERACTIVE AL-JABR BUBBLE CANVAS ENGINE (LANDING PAGE)
-// =====================================================================
-function mulberry32(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
+// --- Language Management ---
+
+function t(key) {
+  const dict = (typeof TRANSLATIONS !== "undefined" && TRANSLATIONS[currentLang]) ? TRANSLATIONS[currentLang] : (typeof TRANSLATIONS !== "undefined" ? TRANSLATIONS.uz : {});
+  return (dict && dict[key]) || (TRANSLATIONS && TRANSLATIONS.uz && TRANSLATIONS.uz[key]) || key;
 }
 
-function clamp(v, a, b) {
-  return Math.min(b, Math.max(a, v));
-}
+function applyLanguage(lang) {
+  if (typeof TRANSLATIONS === "undefined") return;
+  if (!TRANSLATIONS[lang]) lang = "uz";
+  currentLang = lang;
+  localStorage.setItem("aljabr_lang", lang);
 
-function buildBubbles(seed, w, h, nColors, density = 1, scale = 1) {
-  const rnd = mulberry32(seed);
-  const unit = Math.max(6, Math.min(w, h) * 0.12 * scale);
-  const n = Math.round(clamp(((w * h) / (unit * unit * 1.25)) * density, 16, 700));
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    const r = unit * (0.24 + 1.25 * Math.pow(rnd(), 2.3));
-    out.push({
-      x: rnd() * (w + r) - r / 2,
-      y: rnd() * (h + r) - r / 2,
-      r,
-      c: 1 + Math.floor(rnd() * Math.max(1, nColors - 1)),
-      ph: rnd() * Math.PI * 2,
-      amp: 1 + rnd() * 3.5,
-      sp: 0.25 + rnd() * 0.6,
-      ox: 0,
-      oy: 0,
-      s: 1
-    });
-  }
-  return out.sort((a, b) => b.r - a.r);
-}
+  const dict = TRANSLATIONS[lang];
+  document.documentElement.lang = lang;
+  document.documentElement.dir = dict.dir || "ltr";
 
-function initHeroBubbleCanvas() {
-  const canvas = document.getElementById("heroBubbleCanvas");
-  if (!canvas) return;
-
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  const host = canvas.parentElement || canvas;
-  const seed = 102;
-  const density = 1.05;
-  const scale = 1;
-
-  let w = 0;
-  let h = 0;
-  let dpr = 1;
-  let list = [];
-  let sparks = [];
-  let ptr = { x: -9999, y: -9999, dx: 0, dy: 0, on: false };
-  let running = false;
-  let raf = null;
-  let visible = true;
-  let textSize = 0;
-  let textFor = "";
-
-  const rand = mulberry32(seed * 7 + 13);
-
-  function resize() {
-    const rect = host.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    w = rect.width;
-    h = rect.height;
-    dpr = Math.min(2, window.devicePixelRatio || 1);
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-
-    list = buildBubbles(seed, w, h, BUBBLE_COLORS.length, density, scale);
-    textFor = "";
-    draw(performance.now());
-  }
-
-  function draw(t) {
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.globalCompositeOperation = "source-over";
-    ctx.clearRect(0, 0, w, h);
-
-    // Background ground
-    ctx.fillStyle = "#06090e";
-    ctx.fillRect(0, 0, w, h);
-
-    const ts = t / 1000;
-    const R = Math.max(70, Math.min(h, w) * 0.35);
-
-    // Bubbles
-    for (const b of list) {
-      let tx = 0;
-      let ty = 0;
-      if (ptr.on) {
-        const dx = b.x + b.ox - ptr.x;
-        const dy = b.y + b.oy - ptr.y;
-        const d = Math.hypot(dx, dy) || 1;
-        const reach = R + b.r;
-        if (d < reach) {
-          const f = 1 - d / reach;
-          const push = f * f * R * 0.6;
-          tx = (dx / d) * push + ptr.dx * f * 0.6;
-          ty = (dy / d) * push + ptr.dy * f * 0.6;
-        }
-      }
-
-      b.ox += (tx - b.ox) * 0.09;
-      b.oy += (ty - b.oy) * 0.09;
-      b.s += (1 - b.s) * 0.07;
-
-      const wx = Math.sin(ts * b.sp + b.ph) * b.amp;
-      const wy = Math.cos(ts * b.sp * 0.8 + b.ph) * b.amp;
-
-      ctx.fillStyle = BUBBLE_COLORS[b.c % BUBBLE_COLORS.length];
-      ctx.beginPath();
-      ctx.arc(b.x + b.ox + wx, b.y + b.oy + wy, Math.max(0.1, b.r * b.s), 0, Math.PI * 2);
-      ctx.fill();
+  // Translate all data-i18n elements
+  document.querySelectorAll("[data-i18n]").forEach(el => {
+    const k = el.getAttribute("data-i18n");
+    if (dict[k]) {
+      el.textContent = dict[k];
     }
-
-    ptr.dx *= 0.85;
-    ptr.dy *= 0.85;
-
-    // Sparks
-    if (sparks.length > 0) {
-      for (const s of sparks) {
-        s.x += s.vx;
-        s.y += s.vy;
-        s.vx *= 0.94;
-        s.vy = s.vy * 0.94 - 0.05;
-        s.life -= 0.022;
-        if (s.life <= 0) continue;
-        ctx.fillStyle = BUBBLE_COLORS[s.c % BUBBLE_COLORS.length];
-        ctx.beginPath();
-        ctx.arc(s.x, s.y, s.r * s.life, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      sparks = sparks.filter(s => s.life > 0);
-    }
-
-    // Text knockout mask: "AL-JABR"
-    const text = "AL-JABR";
-    const font = '900 100px "Poppins", "Inter", sans-serif';
-    const fit = w > 640 ? 0.88 : 0.98;
-    const key = `${font}|${text}|${w}|${h}|${fit}`;
-    if (key !== textFor) {
-      ctx.font = font;
-      const mw = ctx.measureText(text).width || 1;
-      textSize = Math.min((100 * w * fit) / mw, h * 1.3);
-      textFor = key;
-    }
-    ctx.globalCompositeOperation = "destination-in";
-    ctx.fillStyle = "#000";
-    ctx.font = `900 ${textSize.toFixed(1)}px "Poppins", "Inter", sans-serif`;
-    ctx.textBaseline = "alphabetic";
-    ctx.fillText(text, w * (w > 640 ? 0.05 : 0.01), h * 0.78);
-  }
-
-  function loop(t) {
-    if (!running) return;
-    draw(t);
-    raf = requestAnimationFrame(loop);
-  }
-
-  function start() {
-    if (running || !visible || !w) return;
-    running = true;
-    raf = requestAnimationFrame(loop);
-  }
-
-  function stop() {
-    running = false;
-    if (raf) cancelAnimationFrame(raf);
-  }
-
-  function local(e) {
-    const r = host.getBoundingClientRect();
-    return [e.clientX - r.left, e.clientY - r.top];
-  }
-
-  function onMove(e) {
-    const [x, y] = local(e);
-    if (ptr.on) {
-      ptr.dx = clamp(x - ptr.x, -40, 40);
-      ptr.dy = clamp(y - ptr.y, -40, 40);
-    }
-    ptr.x = x;
-    ptr.y = y;
-    ptr.on = x >= -40 && y >= -40 && x <= w + 40 && y <= h + 40;
-    if (!running) draw(performance.now());
-  }
-
-  function onLeave() {
-    ptr.on = false;
-    if (!running) draw(performance.now());
-  }
-
-  let downAt = [0, 0];
-  function onDown(e) {
-    downAt = [e.clientX, e.clientY];
-  }
-
-  function onUp(e) {
-    if (Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 8) return;
-    if (e.target && e.target.closest && e.target.closest("a,button,input,select")) return;
-    const [x, y] = local(e);
-    if (x < 0 || y < 0 || x > w || y > h) return;
-
-    for (let i = list.length - 1; i >= 0; i--) {
-      const b = list[i];
-      if (Math.hypot(b.x + b.ox - x, b.y + b.oy - y) > b.r * b.s + 4) continue;
-
-      const oldColor = b.c;
-      b.c = 1 + ((b.c + Math.floor(rand() * (BUBBLE_COLORS.length - 2))) % Math.max(1, BUBBLE_COLORS.length - 1));
-      b.s = 0; // shrink to pop!
-
-      // Spawn pop sparks
-      for (let k = 0; k < 9; k++) {
-        const a = (k / 9) * Math.PI * 2 + rand() * 0.5;
-        const sp = 2 + rand() * 4;
-        sparks.push({
-          x: b.x + b.ox,
-          y: b.y + b.oy,
-          vx: Math.cos(a) * sp,
-          vy: Math.sin(a) * sp,
-          r: b.r * (0.18 + rand() * 0.22),
-          c: oldColor,
-          life: 1
-        });
-      }
-
-      // Pop counter increment
-      popCount++;
-      localStorage.setItem("aljabr_pops", popCount);
-      updatePopBadge();
-
-      if (!running) draw(performance.now());
-      break;
-    }
-  }
-
-  host.addEventListener("pointermove", onMove, { passive: true });
-  host.addEventListener("pointerleave", onLeave);
-  host.addEventListener("pointerdown", onDown);
-  host.addEventListener("pointerup", onUp);
-
-  if (typeof ResizeObserver === "function") {
-    new ResizeObserver(resize).observe(host);
-  } else {
-    window.addEventListener("resize", resize);
-  }
-
-  if (typeof IntersectionObserver === "function") {
-    new IntersectionObserver((entries) => {
-      visible = entries.some(e => e.isIntersecting);
-      visible ? start() : stop();
-    }).observe(host);
-  }
-
-  document.addEventListener("visibilitychange", () => {
-    document.hidden ? stop() : start();
   });
 
-  resize();
-  start();
-}
+  // Translate placeholders
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => {
+    const k = el.getAttribute("data-i18n-ph");
+    if (dict[k]) {
+      el.placeholder = dict[k];
+    }
+  });
 
-function updatePopBadge() {
-  const badge = document.getElementById("popCounterBadge");
-  if (badge) {
-    badge.textContent = `${popCount} ta yorildi`;
+  // Render popular tags
+  renderPopularTags();
+
+  // Re-render books and results with updated text
+  if (currentBooks.length > 0) {
+    applyFilterAndSort();
   }
 }
 
-// =====================================================================
-// DATA FETCHING & RENDERING (BOOKS & SEARCH)
-// =====================================================================
+function changeLanguage(lang) {
+  applyLanguage(lang);
+}
+
+function renderPopularTags() {
+  const box = document.getElementById("popularTagsBox");
+  if (!box) return;
+
+  const dict = (typeof TRANSLATIONS !== "undefined" && TRANSLATIONS[currentLang]) ? TRANSLATIONS[currentLang] : (TRANSLATIONS ? TRANSLATIONS.uz : {});
+  const tags = (dict && dict.popularTags) || ["safety", "hazard", "muloqot", "rezyume", "vaqt", "energetika"];
+
+  box.innerHTML = `<span class="text-xs text-slate-400 font-medium mr-1">${t("popularLabel") || "Ommabop:"}</span>`;
+  tags.forEach(tag => {
+    const btn = document.createElement("button");
+    btn.className = "tag-pill text-xs px-2.5 py-0.5 rounded-full bg-slate-800/80 hover:bg-brand-500/20 text-slate-300 hover:text-brand-300 border border-slate-700/60 transition-colors cursor-pointer";
+    btn.textContent = tag;
+    btn.onclick = () => quickSearch(tag);
+    box.appendChild(btn);
+  });
+}
+
+// --- API Calls ---
+
 async function fetchBooks() {
   try {
     const res = await fetch("/api/books");
-    if (!res.ok) throw new Error("Serverdan kitoblar kelmadi");
     const books = await res.json();
     currentBooks = books;
-
-    // Update metrics banner
+    
+    // Update live metrics banner
     const totalSlides = books.reduce((acc, b) => acc + (b.slide_count || 0), 0);
     const metricSlides = document.getElementById("metricTotalSlides");
     if (metricSlides) metricSlides.innerHTML = `${totalSlides}<span class="text-brand-400">+</span>`;
@@ -434,14 +186,24 @@ async function fetchBooks() {
     const metricBooks = document.getElementById("metricTotalBooks");
     if (metricBooks) metricBooks.textContent = books.length;
 
-    const countBadge = document.getElementById("catalogCountBadge");
-    if (countBadge) countBadge.textContent = `${books.length} ta darslik`;
-
     applyFilterAndSort();
   } catch (err) {
     console.error("Darsliklarni yuklashda xatolik:", err);
   }
 }
+
+async function performSearch(query) {
+  if (!query) return;
+  try {
+    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&mode=${searchMode}`);
+    const data = await res.json();
+    renderSearchResults(data.results, query);
+  } catch (err) {
+    console.error("Qidiruvda xatolik:", err);
+  }
+}
+
+// --- Category Filtering and Sorting ---
 
 function filterCategory(cat, btn) {
   currentCategory = cat;
@@ -480,6 +242,8 @@ function applyFilterAndSort() {
 
   renderBooksCatalog(list);
 }
+
+// --- Render Functions ---
 
 function generateSlidePreviewBoxes(book) {
   const count = book.slide_count || 1;
@@ -527,7 +291,7 @@ function renderBooksCatalog(books) {
 
   const badge = document.getElementById("catalogCountBadge");
   if (badge) {
-    badge.textContent = `${books.length} ta darslik`;
+    badge.textContent = `${books.length} ${t("slidesCount") ? "Darslik" : "Modules"}`;
   }
 
   if (!books || books.length === 0) {
@@ -536,14 +300,14 @@ function renderBooksCatalog(books) {
         <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-slate-800/80 flex items-center justify-center text-slate-400 text-2xl">
           <i class="fa-solid fa-book"></i>
         </div>
-        <h4 class="font-bold text-white text-base">${t("emptyCatalog") || "Darsliklar topilmadi"}</h4>
-        <p class="text-xs text-slate-400 mt-1">${t("emptyCatalogDesc") || "Boshqa bo'limni tanlang"}</p>
+        <h4 class="font-bold text-white text-base">${t("emptyCatalog")}</h4>
+        <p class="text-xs text-slate-400 mt-1">${t("emptyCatalogDesc")}</p>
       </div>
     `;
     return;
   }
 
-  books.forEach((book, idx) => {
+  books.forEach(book => {
     const isPpt = (book.file_type || "").toLowerCase().includes("ppt");
     const badgeStyle = isPpt 
       ? "bg-amber-500/15 text-amber-400 border border-amber-500/30" 
@@ -551,46 +315,20 @@ function renderBooksCatalog(books) {
     const badgeLabel = isPpt ? "PPTX" : "PDF";
     const fileIconClass = isPpt ? "fa-regular fa-file-powerpoint text-amber-400/80" : "fa-regular fa-file-pdf text-rose-400/80";
 
-    const code = "#" + String(idx + 1).padStart(3, "0");
-    const slideCount = book.slide_count || 0;
-    const progressFrac = Math.min(1, Math.max(0.15, (slideCount / 40)));
-
-    // Categorization
-    let chipText = "MUHANDISLIK";
-    let chipColor = "bg-slate-800 text-slate-300 border-slate-700";
-    if (/safety|hse|xavfsizlik|hazard/i.test(book.title || '')) {
-      chipText = "HSE & XAVFSIZLIK";
-      chipColor = "bg-emerald-950/80 text-emerald-300 border-emerald-500/30";
-    } else if (/energy|energetika|quyosh|quvvat/i.test(book.title || '')) {
-      chipText = "ENERGETIKA";
-      chipColor = "bg-cyan-950/80 text-cyan-300 border-cyan-500/30";
-    } else if (/muloqot|nutq|communication|rezyume/i.test(book.title || '')) {
-      chipText = "BIZNES VA KARYERA";
-      chipColor = "bg-amber-950/80 text-amber-300 border-amber-500/30";
-    }
-
     const card = document.createElement("article");
-    card.className = "course-card glass-panel rounded-2xl p-5 sm:p-6 border border-slate-800 hover:border-brand-500/60 hover:shadow-card-hover transition-all duration-300 flex flex-col justify-between group cursor-pointer relative overflow-hidden";
+    card.className = "course-card glass-panel rounded-2xl p-5 sm:p-6 border border-slate-800 hover:border-brand-500/50 hover:shadow-card-hover transition-all duration-300 flex flex-col justify-between group cursor-pointer";
     card.onclick = () => openReader(book.id, 1);
     
     card.innerHTML = `
       <div>
-        <!-- Card Header: Code, Badges & Slide Count -->
+        <!-- Card Header Badge & Slide Count -->
         <div class="flex items-center justify-between mb-4">
-          <div class="flex items-center gap-2">
-            <span class="text-xs font-mono font-bold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20">
-              ${code}
-            </span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${badgeStyle} font-mono">
-              ${badgeLabel}
-            </span>
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${chipColor} border font-mono">
-              ${chipText}
-            </span>
-          </div>
-          <div class="flex items-center text-xs font-medium text-slate-400 font-mono">
+          <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${badgeStyle}">
+            ${badgeLabel}
+          </span>
+          <div class="flex items-center text-xs font-medium text-slate-400">
             <i class="fa-regular fa-clone text-[11px] mr-1.5 text-slate-500"></i>
-            <span>${slideCount} ${t("slidesCount") || "slayd"}</span>
+            <span>${book.slide_count || 0} ${t("slidesCount")}</span>
           </div>
         </div>
 
@@ -603,19 +341,8 @@ function renderBooksCatalog(books) {
           <span>${escapeHtml(book.original_filename || book.title)}</span>
         </p>
 
-        <!-- Slide Progress Bar -->
-        <div class="mt-3.5 mb-1">
-          <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
-            <span>Darslik hajmi</span>
-            <span class="text-brand-400 font-bold">${Math.round(progressFrac * 100)}%</span>
-          </div>
-          <div class="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-            <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style="width: ${progressFrac * 100}%;"></div>
-          </div>
-        </div>
-
         <!-- Slide preview graphic simulator -->
-        <div class="my-4 w-full h-20 rounded-xl bg-obsidian-950 border border-slate-800/80 p-2 flex items-center gap-2 overflow-hidden shadow-inner">
+        <div class="my-4 sm:my-5 w-full h-20 sm:h-24 rounded-lg bg-obsidian-900 border border-slate-800 p-2 sm:p-2.5 flex items-center gap-2 overflow-hidden">
           ${generateSlidePreviewBoxes(book)}
         </div>
       </div>
@@ -624,15 +351,15 @@ function renderBooksCatalog(books) {
       <div class="pt-4 border-t border-slate-800/80 flex items-center justify-between mt-auto">
         <span class="text-xs font-medium text-slate-400 flex items-center gap-1.5">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          ${t("readyToRead") || "O'qishga tayyor"}
+          ${t("readyToRead")}
         </span>
         <button 
           type="button"
           onclick="event.stopPropagation(); openReader('${book.id}', 1)"
-          class="inline-flex items-center gap-2 px-4 py-1.5 rounded-xl bg-brand-500 hover:bg-brand-400 text-obsidian-950 font-bold text-xs tracking-wide shadow-glow-emerald transition-all active:scale-95 cursor-pointer"
+          class="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-400 text-obsidian-950 font-semibold text-xs tracking-wide shadow-sm hover:shadow-glow-emerald transition-all active:scale-95 cursor-pointer"
         >
-          <span>${t("readBtn") || "O'qish"}</span>
-          <i class="fa-solid fa-arrow-right text-xs"></i>
+          <span>${t("readBtn")}</span>
+          <i class="fa-solid fa-book-open-reader text-xs"></i>
         </button>
       </div>
     `;
@@ -655,12 +382,12 @@ function renderSearchResults(results, query) {
 
   if (!results || results.length === 0) {
     noResults.classList.remove("hidden");
-    title.textContent = `"${query}" — ${t("noResults") || "Natija topilmadi"}`;
+    title.textContent = `"${query}" — ${t("noResults")}`;
     return;
   }
 
   noResults.classList.add("hidden");
-  title.innerHTML = `"${escapeHtml(query)}" — <span class="text-brand-400 font-extrabold">${results.length} ta</span> ${t("foundIn") || "joyda topildi"}`;
+  title.innerHTML = `"${escapeHtml(query)}" — <span class="text-brand-400 font-extrabold">${results.length} ta</span> ${t("foundIn")}`;
 
   results.forEach(item => {
     const isPpt = (item.file_type || "").toLowerCase().includes("ppt");
@@ -678,16 +405,16 @@ function renderSearchResults(results, query) {
           <span class="font-bold text-white group-hover:text-brand-300 transition-colors">📖 ${escapeHtml(item.book_title)}</span>
           <span>•</span>
           <span class="font-semibold text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded border border-brand-500/20 font-mono">
-            📌 ${item.slide_number}-${t("slide") || "slayd"}
+            📌 ${item.slide_number}-${t("slide")}
           </span>
           <span class="text-slate-500 font-mono">(${badgeLabel})</span>
         </div>
 
         <h5 class="text-sm font-bold text-slate-100 mb-2 truncate">
-          ${escapeHtml(item.slide_title || (item.slide_number + "-" + (t("slide") || "slayd")))}
+          ${escapeHtml(item.slide_title || (item.slide_number + "-" + t("slide")))}
         </h5>
 
-        <div class="text-xs text-slate-300 leading-relaxed bg-obsidian-950 p-3 rounded-lg border border-slate-800">
+        <div class="text-xs text-slate-300 leading-relaxed bg-obsidian-900/90 p-3 rounded-lg border border-slate-800">
           ${highlightedSnippet}
         </div>
       </div>
@@ -696,9 +423,9 @@ function renderSearchResults(results, query) {
         <button 
           type="button"
           onclick="event.stopPropagation(); openReader('${item.book_id}', ${item.slide_number}, '${escapeHtml(query)}')"
-          class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-400 text-obsidian-950 font-bold text-xs transition active:scale-95 shadow-glow-emerald cursor-pointer"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-400 text-obsidian-950 font-bold text-xs transition active:scale-95 shadow-glow-emerald cursor-pointer"
         >
-          <span>${t("readBtn") || "O'qish"}</span>
+          <span>${t("readBtn")}</span>
           <i class="fa-solid fa-arrow-right text-xs"></i>
         </button>
       </div>
@@ -707,16 +434,7 @@ function renderSearchResults(results, query) {
   });
 }
 
-async function performSearch(query) {
-  if (!query) return;
-  try {
-    const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&mode=${searchMode}`);
-    const data = await res.json();
-    renderSearchResults(data.results, query);
-  } catch (err) {
-    console.error("Qidiruvda xatolik:", err);
-  }
-}
+// --- Search Filter Modes & Quick Tags ---
 
 function setMode(mode) {
   searchMode = mode;
@@ -762,9 +480,38 @@ function resetSearch() {
   if (booksSec) booksSec.classList.remove("hidden");
 }
 
-// =====================================================================
-// PRESENTATION VIEWER (READER VIEW LOGIC)
-// =====================================================================
+// --- Mobile Gesture Support ---
+
+function setupTouchGestures() {
+  const area = document.getElementById("slideTouchArea");
+  if (!area) return;
+
+  area.addEventListener("touchstart", (e) => {
+    if (e.touches && e.touches[0]) {
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+    }
+  }, { passive: true });
+
+  area.addEventListener("touchend", (e) => {
+    if (!touchStartX || !e.changedTouches || !e.changedTouches[0]) return;
+    const diffX = e.changedTouches[0].clientX - touchStartX;
+    const diffY = e.changedTouches[0].clientY - touchStartY;
+
+    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
+      if (diffX < 0) {
+        currentLang === "ar" ? prevSlide() : nextSlide();
+      } else {
+        currentLang === "ar" ? nextSlide() : prevSlide();
+      }
+    }
+    touchStartX = 0;
+    touchStartY = 0;
+  }, { passive: true });
+}
+
+// --- Reader View Logic ---
+
 async function openReader(bookId, targetSlideNumber = 1, highlightQuery = '') {
   try {
     const res = await fetch(`/api/books/${bookId}`);
@@ -781,7 +528,7 @@ async function openReader(bookId, targetSlideNumber = 1, highlightQuery = '') {
     const isPpt = (book.file_type || "").toLowerCase().includes("ppt");
     const readerBadge = document.getElementById("readerBadge");
     if (readerBadge) {
-      readerBadge.textContent = isPpt ? "PPTX TAQDIMOT" : "PDF HUJJAT";
+      readerBadge.textContent = isPpt ? "PPTX" : "PDF";
       readerBadge.className = isPpt 
         ? "px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0 font-mono"
         : "px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 shrink-0 font-mono";
@@ -806,7 +553,7 @@ async function openReader(bookId, targetSlideNumber = 1, highlightQuery = '') {
       if (select) {
         const opt = document.createElement("option");
         opt.value = idx;
-        opt.textContent = `${s.slide_number}-${t("slide") || "slayd"}: ${(s.title || '').slice(0, 25)}`;
+        opt.textContent = `${s.slide_number}-${t("slide")}: ${(s.title || '').slice(0, 25)}`;
         select.appendChild(opt);
       }
 
@@ -816,7 +563,7 @@ async function openReader(bookId, targetSlideNumber = 1, highlightQuery = '') {
         sBtn.id = `sidebarSlideBtn_${idx}`;
         sBtn.onclick = () => jumpToSlide(idx);
         sBtn.className = "w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800/80 transition truncate";
-        sBtn.innerHTML = `<span class="font-bold text-brand-400 font-mono mr-1.5">${s.slide_number}.</span> ${escapeHtml(s.title || (t("slide") || "Slayd"))}`;
+        sBtn.innerHTML = `<span class="font-bold text-brand-400 font-mono mr-1.5">${s.slide_number}.</span> ${escapeHtml(s.title || t("slide"))}`;
         desktopSidebar.appendChild(sBtn);
       }
 
@@ -825,7 +572,7 @@ async function openReader(bookId, targetSlideNumber = 1, highlightQuery = '') {
         const mBtn = document.createElement("button");
         mBtn.onclick = () => { jumpToSlide(idx); toggleMobileToc(); };
         mBtn.className = "w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-obsidian-800 text-slate-200 border border-slate-700 transition flex items-center justify-between";
-        mBtn.innerHTML = `<span class="truncate font-mono">${s.slide_number}. ${escapeHtml(s.title || (t("slide") || "Slayd"))}</span><i class="fa-solid fa-chevron-right text-brand-400 text-xs"></i>`;
+        mBtn.innerHTML = `<span class="truncate font-mono">${s.slide_number}. ${escapeHtml(s.title || t("slide"))}</span><i class="fa-solid fa-chevron-right text-brand-400 text-xs"></i>`;
         mobileDrawer.appendChild(mBtn);
       }
     });
@@ -873,7 +620,7 @@ function updateSlideDisplay(highlightWord = '') {
     if (slide.content) {
       contentEl.innerHTML = formatSlideContent(slide.content, highlightWord);
     } else {
-      contentEl.innerHTML = `<span class='text-slate-400 italic'>${t("noSlideContent") || "(Ushbu slaydda matn mavjud emas)"}</span>`;
+      contentEl.innerHTML = `<span class='text-slate-400 italic'>${t("noSlideContent")}</span>`;
     }
     contentEl.style.fontSize = `${currentFontSize}px`;
   }
@@ -1011,6 +758,8 @@ function closeReader() {
   currentReadingBook = null;
 }
 
+// --- Content Formatter (Links & YouTube Video Player) ---
+
 function formatSlideContent(text, highlightWord) {
   if (!text) return "";
 
@@ -1030,10 +779,10 @@ function formatSlideContent(text, highlightWord) {
             <div class="flex items-center justify-between mb-2">
               <span class="text-xs font-bold text-red-400 flex items-center gap-1.5">
                 <i class="fa-brands fa-youtube text-red-500 text-sm"></i>
-                ${t("ytVideo") || "YouTube Video"}
+                ${t("ytVideo")}
               </span>
               <a href="${cleanUrl}" target="_blank" rel="noopener noreferrer" class="text-xs font-bold text-red-400 hover:underline inline-flex items-center gap-1">
-                ${t("openDirectly") || "To'g'ridan-to'g'ri ochish ↗"}
+                ${t("openDirectly")}
               </a>
             </div>
             <div class="aspect-video w-full rounded-xl overflow-hidden shadow-lg bg-black">
@@ -1054,101 +803,8 @@ function formatSlideContent(text, highlightWord) {
   }).join("");
 }
 
-function setupTouchGestures() {
-  const area = document.getElementById("slideTouchArea");
-  if (!area) return;
+// --- Helpers ---
 
-  area.addEventListener("touchstart", (e) => {
-    if (e.touches && e.touches[0]) {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-    }
-  }, { passive: true });
-
-  area.addEventListener("touchend", (e) => {
-    if (!touchStartX || !e.changedTouches || !e.changedTouches[0]) return;
-    const diffX = e.changedTouches[0].clientX - touchStartX;
-    const diffY = e.changedTouches[0].clientY - touchStartY;
-
-    if (Math.abs(diffX) > 60 && Math.abs(diffX) > Math.abs(diffY) * 1.5) {
-      if (diffX < 0) {
-        currentLang === "ar" ? prevSlide() : nextSlide();
-      } else {
-        currentLang === "ar" ? nextSlide() : prevSlide();
-      }
-    }
-    touchStartX = 0;
-    touchStartY = 0;
-  }, { passive: true });
-}
-
-// =====================================================================
-// LANGUAGE MANAGEMENT
-// =====================================================================
-function t(key) {
-  const dict = (typeof TRANSLATIONS !== "undefined" && TRANSLATIONS[currentLang]) ? TRANSLATIONS[currentLang] : (typeof TRANSLATIONS !== "undefined" ? TRANSLATIONS.uz : {});
-  return (dict && dict[key]) || (TRANSLATIONS && TRANSLATIONS.uz && TRANSLATIONS.uz[key]) || key;
-}
-
-function applyLanguage(lang) {
-  if (typeof TRANSLATIONS === "undefined") return;
-  if (!TRANSLATIONS[lang]) lang = "uz";
-  currentLang = lang;
-  localStorage.setItem("aljabr_lang", lang);
-
-  const dict = TRANSLATIONS[lang];
-  document.documentElement.lang = lang;
-  document.documentElement.dir = dict.dir || "ltr";
-
-  // Translate all data-i18n elements
-  document.querySelectorAll("[data-i18n]").forEach(el => {
-    const k = el.getAttribute("data-i18n");
-    if (dict[k]) {
-      el.textContent = dict[k];
-    }
-  });
-
-  // Translate placeholders
-  document.querySelectorAll("[data-i18n-ph]").forEach(el => {
-    const k = el.getAttribute("data-i18n-ph");
-    if (dict[k]) {
-      el.placeholder = dict[k];
-    }
-  });
-
-  // Render popular tags
-  renderPopularTags();
-
-  // Re-render books and results with updated text
-  if (currentBooks.length > 0) {
-    applyFilterAndSort();
-  }
-}
-
-function changeLanguage(lang) {
-  applyLanguage(lang);
-}
-
-function renderPopularTags() {
-  const box = document.getElementById("popularTagsBox");
-  if (!box) return;
-
-  const dict = (typeof TRANSLATIONS !== "undefined" && TRANSLATIONS[currentLang]) ? TRANSLATIONS[currentLang] : (TRANSLATIONS ? TRANSLATIONS.uz : {});
-  const tags = (dict && dict.popularTags) || ["safety", "hazard", "muloqot", "rezyume", "vaqt", "energetika"];
-
-  box.innerHTML = `<span class="text-xs text-slate-400 font-medium mr-1">${t("popularLabel") || "Ommabop:"}</span>`;
-  tags.forEach(tag => {
-    const btn = document.createElement("button");
-    btn.className = "tag-pill text-xs px-2.5 py-0.5 rounded-full bg-slate-800/80 hover:bg-brand-500/20 text-slate-300 hover:text-brand-300 border border-slate-700/60 transition-colors cursor-pointer";
-    btn.textContent = tag;
-    btn.onclick = () => quickSearch(tag);
-    box.appendChild(btn);
-  });
-}
-
-// =====================================================================
-// HELPERS
-// =====================================================================
 function escapeHtml(str) {
   if (!str) return "";
   return String(str)
