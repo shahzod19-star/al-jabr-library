@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+uploads/test_upload.pptx
+.env
