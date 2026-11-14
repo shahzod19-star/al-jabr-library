@@ -138,12 +138,8 @@ async function handleFileUpload(e) {
   }
 
   const file = fileInput.files[0];
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("admin_pin", adminPin);
-  if (titleInput.value.trim()) {
-    formData.append("custom_title", titleInput.value.trim());
-  }
+  const customTitle = titleInput.value.trim();
+  const fileSizeMB = file.size / (1024 * 1024);
 
   // Set uploading state
   uploadBtn.disabled = true;
@@ -152,44 +148,224 @@ async function handleFileUpload(e) {
       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
       <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
     </svg>
-    <span>Fayl o'qilmoqda va slaydlar ajratilmoqda...</span>
+    <span>Darslik qayta ishlanmoqda...</span>
   `;
+
+  // Agar fayl 4.2 MB dan katta bo'lsa (100MB gacha), Vercel'ning 4.5MB cheklovini 
+  // chetlab o'tish uchun to'g'ridan-to'g'ri brauzerda (Client-side) aqlli ajratishdan foydalanamiz!
+  if (fileSizeMB > 4.2) {
+    await handleLargeFileUploadInBrowser(file, customTitle, statusBox, uploadBtn);
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("admin_pin", adminPin);
+  if (customTitle) {
+    formData.append("custom_title", customTitle);
+  }
+
   statusBox.className = "p-4 rounded-xl text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 block";
-  statusBox.textContent = "Fayl serverga yuklanmoqda va ichidagi barcha matnlar indekslanmoqda. Bu bir necha soniya vaqt olishi mumkin...";
+  statusBox.textContent = "Fayl serverga yuklanmoqda va indekslanmoqda...";
 
   try {
     const res = await fetch("/api/admin/upload", {
       method: "POST",
       body: formData
     });
-    const result = await res.json();
+
+    // Check for Vercel 4.5MB payload limit (HTTP 413 Request Entity Too Large)
+    if (res.status === 413) {
+      // Avtomatik ravishda brauzerda ajratish rejimiga o'tish
+      await handleLargeFileUploadInBrowser(file, customTitle, statusBox, uploadBtn);
+      return;
+    }
+
+    let result;
+    const rawText = await res.text();
+    try {
+      result = JSON.parse(rawText);
+    } catch (parseErr) {
+      throw new Error(`Server javobi: ${rawText.slice(0, 150)}`);
+    }
 
     if (!res.ok) {
       throw new Error(result.detail || "Yuklashda xatolik yuz berdi");
     }
 
     // Success
-    statusBox.className = "p-4 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 block";
-    statusBox.innerHTML = `
-      ✓ <strong>Muvaffaqiyatli saqlandi!</strong><br>
-      Darslik: <strong>${escapeHtml(result.book.title)}</strong><br>
-      Ajratilgan slaydlar soni: <strong>${result.book.slide_count} ta</strong>
-    `;
-
-    // Reset inputs
+    showUploadSuccess(result.book, statusBox);
     fileInput.value = "";
     titleInput.value = "";
     document.getElementById("selectedFileName").classList.add("hidden");
-
-    // Refresh book list
     loadAdminBooks();
   } catch (err) {
-    statusBox.className = "p-4 rounded-xl text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 block";
-    statusBox.textContent = "Xatolik: " + err.message;
+    // Agar serverda xatolik bo'lsa, brauzerda ajratishni sinab ko'ramiz
+    console.warn("Standart yuklashda xatolik, brauzerda ajratish rejimi sinab ko'rilmoqda:", err);
+    try {
+      await handleLargeFileUploadInBrowser(file, customTitle, statusBox, uploadBtn);
+    } catch (fallbackErr) {
+      statusBox.className = "p-4 rounded-xl text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 block";
+      statusBox.textContent = "Xatolik: " + fallbackErr.message;
+    }
   } finally {
     uploadBtn.disabled = false;
     uploadBtn.innerHTML = `<span>Darslikni yuklash va indekslash</span><span>⚡</span>`;
   }
+}
+
+// --- 100MB gacha bo'lgan katta fayllarni Brauzerda Aqlli Ajratish (Client-side) ---
+
+async function handleLargeFileUploadInBrowser(file, customTitle, statusBox, uploadBtn) {
+  const fileSizeMB = (file.size / (1024 * 1024)).toFixed(1);
+  const ext = file.name.split('.').pop().toLowerCase();
+  
+  statusBox.className = "p-4 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-900 border border-emerald-300 block";
+  statusBox.innerHTML = `
+    <strong>⚡ Katta darslik (${fileSizeMB} MB) aniqlandi!</strong><br>
+    Vercel 4.5MB cheklovini chetlab o'tish uchun darslik to'g'ridan-to'g'ri brauzeringizda o'qilmoqda va slaydlar ajratilmoqda...
+  `;
+
+  let slides = [];
+  try {
+    if (ext === "pdf") {
+      slides = await parsePdfInBrowser(file, statusBox);
+    } else if (ext === "pptx" || ext === "ppt") {
+      slides = await parsePptxInBrowser(file, statusBox);
+    } else {
+      throw new Error("Faqat PPTX yoki PDF fayllar qo'llab-quvvatlanadi.");
+    }
+
+    if (!slides || slides.length === 0) {
+      throw new Error("Darslik ichidan slaydlar yoki matn topilmadi.");
+    }
+
+    statusBox.textContent = `Ajratildi: ${slides.length} ta slayd. Bulutga (Supabase) saqlanmoqda...`;
+
+    const bookTitle = customTitle || slides[0].title || file.name.replace(/\.[^/.]+$/, "");
+
+    const res = await fetch("/api/admin/save_book_json", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        admin_pin: adminPin,
+        title: bookTitle,
+        original_filename: file.name,
+        file_type: ext,
+        slides: slides
+      })
+    });
+
+    const result = await res.json();
+    if (!res.ok) {
+      throw new Error(result.detail || "Bulutga saqlashda xatolik yuz berdi");
+    }
+
+    showUploadSuccess(result.book, statusBox);
+    document.getElementById("fileInput").value = "";
+    document.getElementById("customTitleInput").value = "";
+    document.getElementById("selectedFileName").classList.add("hidden");
+    loadAdminBooks();
+  } catch (err) {
+    statusBox.className = "p-4 rounded-xl text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 block";
+    statusBox.textContent = "Katta faylni ajratishda xatolik: " + err.message;
+    throw err;
+  }
+}
+
+// PPTX faylni brauzerda (JSZip) o'qish
+async function parsePptxInBrowser(file, statusBox) {
+  if (typeof JSZip === "undefined") {
+    throw new Error("JSZip kutubxonasi yuklanmadi. Sahifani yangilab qayta urinib ko'ring.");
+  }
+
+  const zip = await JSZip.loadAsync(file);
+  const slideFiles = [];
+
+  zip.forEach((relPath, entry) => {
+    const match = relPath.match(/^ppt\/slides\/slide(\d+)\.xml$/i);
+    if (match) {
+      slideFiles.push({ num: parseInt(match[1]), entry });
+    }
+  });
+
+  if (slideFiles.length === 0) {
+    throw new Error("PPTX ichida slaydlar topilmadi.");
+  }
+
+  slideFiles.sort((a, b) => a.num - b.num);
+  const slides = [];
+
+  for (let i = 0; i < slideFiles.length; i++) {
+    const item = slideFiles[i];
+    if (statusBox && (i % 5 === 0 || i === slideFiles.length - 1)) {
+      statusBox.textContent = `Slaydlar o'qilmoqda: ${i + 1} / ${slideFiles.length}...`;
+    }
+
+    const xml = await item.entry.async("text");
+    
+    // Matn paragraflarini ajratish (<a:p> ... </a:p>)
+    const pMatches = xml.match(/<a:p[ >][\s\S]*?<\/a:p>/g) || [];
+    const paragraphs = [];
+    for (const p of pMatches) {
+      const tMatches = p.match(/<a:t[^>]*>([^<]*)<\/a:t>/g) || [];
+      const line = tMatches.map(t => t.replace(/<[^>]+>/g, "")).join("").trim();
+      if (line) paragraphs.push(line);
+    }
+
+    const slideTitle = paragraphs.length > 0 ? paragraphs[0] : `${item.num}-slayd`;
+    const slideContent = paragraphs.join("\n\n");
+
+    slides.push({
+      slide_number: item.num,
+      title: slideTitle.slice(0, 150),
+      content: slideContent,
+      images: []
+    });
+  }
+
+  return slides;
+}
+
+// PDF faylni brauzerda (PDF.js) o'qish
+async function parsePdfInBrowser(file, statusBox) {
+  if (typeof pdfjsLib === "undefined") {
+    throw new Error("PDF.js kutubxonasi yuklanmadi. Sahifani yangilab qayta urinib ko'ring.");
+  }
+
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const slides = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    if (statusBox && (i % 5 === 0 || i === pdf.numPages)) {
+      statusBox.textContent = `PDF sahifalari o'qilmoqda: ${i} / ${pdf.numPages}...`;
+    }
+
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const strings = textContent.items.map(item => item.str.trim()).filter(Boolean);
+    const pageTitle = strings.length > 0 && strings[0].length <= 120 ? strings[0] : `${i}-sahifa`;
+    const pageContent = strings.join("\n");
+
+    slides.push({
+      slide_number: i,
+      title: pageTitle,
+      content: pageContent,
+      images: []
+    });
+  }
+
+  return slides;
+}
+
+function showUploadSuccess(book, statusBox) {
+  statusBox.className = "p-4 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 block";
+  statusBox.innerHTML = `
+    ✓ <strong>Muvaffaqiyatli saqlandi!</strong><br>
+    Darslik: <strong>${escapeHtml(book.title)}</strong><br>
+    Ajratilgan slaydlar soni: <strong>${book.slide_count} ta</strong>
+  `;
 }
 
 // --- Book Management ---
