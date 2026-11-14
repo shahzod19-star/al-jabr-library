@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="uz" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>al-jabr.library — Shirin Energy Technical College</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            },
+            energy: {
+              teal: '#0d9488',
+              cyan: '#06b6d4',
+              amber: '#f59e0b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Plus Jakarta Sans & Cairo for Arabic -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    body { 
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    [dir="rtl"] {
+      font-family: 'Cairo', sans-serif;
+    }
+    mark {
+      background-color: #fef08a;
+      color: #854d0e;
+      padding: 0 4px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    .dark mark {
+      background-color: #854d0e;
+      color: #fef08a;
+    }
+    .slide-content-text {
+      white-space: pre-wrap;
+      line-height: 1.8;
+      word-break: break-word;
+    }
+    /* Hide scrollbars for pill bars */
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- Header -->
+  <header class="bg-white/85 dark:bg-[#0f172a]/85 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800/80 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2">
+      
+      <!-- Brand Logo & Name -->
+      <div class="flex items-center space-x-2.5 cursor-pointer shrink-0" onclick="resetSearch()">
+        <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-brand-600 via-energy-teal to-energy-cyan flex items-center justify-center shadow-md shadow-brand-600/20 text-white shrink-0">
+          <svg class="w-5 h-5 sm:w-6 sm:h-6" viewBox="0 0 64 64" fill="none">
+            <path d="M14 44C20 40 28 41 32 46C36 41 44 40 50 44V20C44 16 36 17 32 22C28 17 20 16 14 20V44Z" fill="white" />
+            <circle cx="32" cy="14" r="5" fill="#f59e0b" />
+            <path d="M32 24V46" stroke="#059669" stroke-width="3" stroke-linecap="round" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center space-x-1.5">
+            <h1 class="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-brand-600 via-energy-teal to-blue-600 dark:from-brand-400 dark:via-energy-cyan dark:to-blue-400 bg-clip-text text-transparent">
+              al-jabr<span class="text-slate-800 dark:text-slate-200 font-semibold">.library</span>
+            </h1>
+          </div>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[170px] sm:max-w-none" data-i18n="collegeBadge">
+            Shirin Energetika Texnikumi
+          </p>
+        </div>
+      </div>
+
+      <!-- Controls: Lang + Theme + Librarian -->
+      <div class="flex items-center space-x-1.5 sm:space-x-2.5">
+        
+        <!-- Language Selector Dropdown -->
+        <div class="relative">
+          <select 
+            id="langSelect" 
+            onchange="changeLanguage(this.value)"
+            class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 cursor-pointer"
+          >
+            <option value="uz">UZ (O'zbek)</option>
+            <option value="en">EN (English)</option>
+            <option value="ru">RU (Русский)</option>
+            <option value="ar">AR (العربية)</option>
+          </select>
+        </div>
+
+        <!-- Dark / Light Theme Toggle -->
+        <button 
+          id="themeToggleBtn" 
+          onclick="toggleTheme()" 
+          class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-amber-400 flex items-center justify-center text-sm transition"
+          title="Kecha / Kunduz mavzusi"
+        >
+          <span id="themeIcon">☀️</span>
+        </button>
+
+        <!-- Librarian Button -->
+        <a 
+          href="/admin" 
+          class="inline-flex items-center space-x-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-brand-50 dark:hover:bg-brand-900/40 text-slate-700 dark:text-slate-300 hover:text-brand-600 dark:hover:text-brand-400 border border-slate-200 dark:border-slate-700 transition"
+        >
+          <span>🔐</span>
+          <span class="hidden md:inline" data-i18n="librarianBtn">Kutubxonachi</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero & Search Section -->
+  <section class="relative bg-gradient-to-b from-brand-50/60 via-slate-50 to-slate-50 dark:from-[#0d1c1a]/60 dark:via-[#090d16] dark:to-[#090d16] border-b border-slate-200/70 dark:border-slate-800/80 pt-6 sm:pt-10 pb-8 sm:pb-12 px-3 sm:px-4 overflow-hidden">
+    <!-- Ambient Energy Glow -->
+    <div class="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 bg-brand-500/10 dark:bg-brand-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="max-w-3xl mx-auto text-center relative z-10">
+      
+      <!-- Slogan Badge -->
+      <div class="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-brand-100/80 dark:bg-brand-900/40 text-brand-800 dark:text-brand-300 border border-brand-200/60 dark:border-brand-700/50 text-[11px] font-semibold mb-3">
+        <span>⚡</span>
+        <span data-i18n="slogan">Qayta tiklanuvchi energiya va fan darsliklari portali</span>
+      </div>
+
+      <h2 class="text-xl sm:text-3xl lg:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight" data-i18n="heroTitle">
+        Ilm va Energetika Bilimlar Bazasi
+      </h2>
+      <p class="mt-1.5 text-xs sm:text-sm text-slate-600 dark:text-slate-400 max-w-xl mx-auto" data-i18n="heroSubtitle">
+        Darsliklarni qidiring va to'g'ridan-to'g'ri o'qing — ortiqcha fayl yuklab olmaysiz
+      </p>
+
+      <!-- Search Input Box (Mobile-first) -->
+      <div class="mt-5 relative">
+        <div class="relative flex items-center shadow-md dark:shadow-brand-900/10 rounded-2xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 focus-within:border-brand-500 dark:focus-within:border-brand-400 focus-within:ring-4 focus-within:ring-brand-500/10 transition overflow-hidden">
+          <div class="pl-3.5 text-slate-400 dark:text-slate-500">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+          <input 
+            type="text" 
+            id="searchInput" 
+            placeholder="Mavzu yoki kalit so'zni qidiring (masalan: safety, muloqot, rezyume)..." 
+            class="w-full py-3 sm:py-3.5 px-2.5 sm:px-3 text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 text-sm sm:text-base focus:outline-none bg-transparent"
+            autocomplete="off"
+            data-i18n-ph="searchPlaceholder"
+          />
+          <button 
+            id="clearSearchBtn" 
+            onclick="resetSearch()" 
+            class="hidden pr-3.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition font-bold text-sm" 
+            title="Tozalash"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Filter Chips (Touch Friendly Scrollable) -->
+        <div class="flex items-center justify-start sm:justify-center gap-1.5 mt-3 text-xs font-semibold overflow-x-auto no-scrollbar py-0.5">
+          <span class="text-slate-400 dark:text-slate-500 text-[11px] shrink-0" data-i18n="searchScope">Qidiruv:</span>
+          <button onclick="setMode('all')" id="btnModeAll" class="shrink-0 px-3 py-1 rounded-full bg-brand-600 text-white font-bold shadow-xs transition" data-i18n="filterAll">
+            Barchasi
+          </button>
+          <button onclick="setMode('content')" id="btnModeContent" class="shrink-0 px-3 py-1 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-i18n="filterContent">
+            Darslik ichidan
+          </button>
+          <button onclick="setMode('title')" id="btnModeTitle" class="shrink-0 px-3 py-1 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 transition" data-i18n="filterTitle">
+            Mavzu nomi
+          </button>
+        </div>
+
+        <!-- Popular Tags Pills -->
+        <div id="popularTagsBox" class="flex items-center justify-start sm:justify-center gap-1.5 mt-2.5 text-xs text-slate-500 dark:text-slate-400 overflow-x-auto no-scrollbar py-0.5">
+          <!-- Injected by JS with current language -->
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 max-w-6xl w-full mx-auto px-3 sm:px-4 py-5 sm:py-8">
+    
+    <!-- State: Search Results -->
+    <div id="searchResultsSection" class="hidden">
+      <div class="flex items-center justify-between mb-3.5">
+        <h3 id="searchResultsTitle" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white" data-i18n="searchResults">
+          Qidiruv natijalari
+        </h3>
+        <button onclick="resetSearch()" class="text-xs font-bold text-brand-600 dark:text-brand-400 hover:underline" data-i18n="backToLibrary">
+          ← Barcha darsliklarga qaytish
+        </button>
+      </div>
+
+      <!-- Results Grid -->
+      <div id="resultsList" class="space-y-3">
+        <!-- Injected by JavaScript -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="noResultsState" class="hidden text-center py-12 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6">
+        <div class="text-3xl mb-2">🔍</div>
+        <h4 class="text-sm sm:text-base font-bold text-slate-800 dark:text-slate-200" data-i18n="noResults">Hech qanday natija topilmadi</h4>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto" data-i18n="noResultsDesc">
+          Boshqa so'z bilan qidirib ko'ring yoki umumiyroq so'z kiriting.
+        </p>
+      </div>
+    </div>
+
+    <!-- State: All Books Catalog -->
+    <div id="allBooksSection">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+            <span data-i18n="shelfTitle">Darsliklar Javoni</span>
+            <span id="catalogCountBadge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand-100 dark:bg-brand-900/40 text-brand-800 dark:text-brand-300">0</span>
+          </h3>
+          <p class="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400" data-i18n="shelfSubtitle">Mavjud barcha darsliklar va taqdimotlar</p>
+        </div>
+      </div>
+
+      <div id="booksGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <!-- Injected by JavaScript -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Interactive Reader (Full-Screen Viewport Optimized for Mobile & Desktop) -->
+  <div id="readerModal" class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md hidden flex flex-col h-[100dvh]">
+    
+    <!-- Reader Top Bar -->
+    <div class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-2.5 flex items-center justify-between shadow-xs shrink-0">
+      <div class="flex items-center space-x-2.5 overflow-hidden">
+        <div id="readerBadge" class="w-8 h-8 rounded-lg bg-brand-100 dark:bg-brand-900/50 text-brand-700 dark:text-brand-300 flex items-center justify-center font-bold text-xs shrink-0">
+          PPT
+        </div>
+        <div class="truncate">
+          <h4 id="readerBookTitle" class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white truncate">
+            Darslik
+          </h4>
+          <p id="readerSlideIndicator" class="text-[11px] text-slate-500 dark:text-slate-400">
+            Slayd 1 / 20
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-1.5 shrink-0">
+        <!-- Mobile Drawer Toggle for Mundarija -->
+        <button onclick="toggleMobileToc()" class="md:hidden inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-bold" title="Mundarija">
+          <span>📑</span>
+          <span data-i18n="toc">Mundarija</span>
+        </button>
+
+        <!-- Font zoom -->
+        <button onclick="changeFontSize(-1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs" title="A-">A-</button>
+        <button onclick="changeFontSize(1)" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs" title="A+">A+</button>
+        
+        <!-- Close -->
+        <button onclick="closeReader()" class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/50 dark:hover:text-rose-300 text-slate-700 dark:text-slate-300 font-bold text-xs transition" title="Yopish">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <!-- Reader Body (Sidebar TOC on Desktop, Main Slide Sheet in Center) -->
+    <div class="flex-1 flex overflow-hidden relative">
+      
+      <!-- Desktop Sidebar TOC -->
+      <aside class="hidden md:flex flex-col w-64 bg-slate-100 dark:bg-[#0c1322] border-r border-slate-200 dark:border-slate-800 overflow-y-auto p-3 space-y-1.5 shrink-0">
+        <p class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider px-2" data-i18n="toc">Mundarija</p>
+        <div id="readerSidebarSlides" class="space-y-1">
+          <!-- Injected by JS -->
+        </div>
+      </aside>
+
+      <!-- Mobile Slide-Up Drawer for TOC -->
+      <div id="mobileTocDrawer" class="fixed inset-x-0 bottom-0 z-40 bg-white dark:bg-slate-900 rounded-t-3xl border-t border-slate-200 dark:border-slate-800 shadow-2xl p-4 max-h-[70vh] flex flex-col hidden md:hidden">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800 mb-2">
+          <h4 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+            <span>📑</span> <span data-i18n="toc">Mundarija</span>
+          </h4>
+          <button onclick="toggleMobileToc()" class="text-xs font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 px-2 py-1">✕</button>
+        </div>
+        <div id="mobileDrawerSlides" class="overflow-y-auto space-y-1.5 flex-1 pr-1">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
+      <!-- Main Slide View Area (Swipe-enabled on Mobile) -->
+      <div id="slideTouchArea" class="flex-1 flex flex-col bg-slate-200/60 dark:bg-[#060a12] p-2.5 sm:p-6 overflow-y-auto items-center justify-start sm:justify-center">
+        
+        <!-- Slide Sheet -->
+        <div id="slideCard" class="w-full max-w-3xl min-h-[380px] bg-white dark:bg-[#0f172a] rounded-2xl sm:rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-8 flex flex-col justify-between transition-all my-auto">
+          <div>
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5 mb-3.5">
+              <span id="slideHeaderNumber" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300">
+                1-slayd
+              </span>
+              <span id="slideFileFormat" class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-semibold">
+                Taqdimot
+              </span>
+            </div>
+
+            <!-- Slide Title -->
+            <h3 id="slideDisplayTitle" class="text-base sm:text-2xl font-extrabold text-slate-900 dark:text-white mb-3">
+              Sarlavha
+            </h3>
+
+            <!-- Slide Body Text -->
+            <div id="slideDisplayContent" class="slide-content-text text-slate-700 dark:text-slate-200 text-sm sm:text-base">
+              Matn yuklanmoqda...
+            </div>
+
+            <!-- Slide Images Gallery -->
+            <div id="slideImageGallery" class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 hidden">
+              <h5 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+                <span>🖼️</span> <span data-i18n="galleryTitle">Slayd Rasmlari va Grafikalari</span>
+              </h5>
+              <div id="slideImagesContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+                <!-- Images injected by JS -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Footer Info -->
+          <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500 flex justify-between items-center">
+            <span id="slideBookFooterTitle" class="truncate max-w-[200px] sm:max-w-xs">Darslik</span>
+            <span class="font-bold text-brand-600 dark:text-brand-400">al-jabr.library</span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- Reader Bottom Controls (Touch-Friendly Thumbs Bar) -->
+    <div class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 shrink-0">
+      <button 
+        id="btnPrevSlide" 
+        onclick="prevSlide()" 
+        class="inline-flex items-center justify-center space-x-1 px-3 sm:px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-bold transition active:scale-95"
+      >
+        <span>←</span>
+        <span data-i18n="prevBtn">Oldingi</span>
+      </button>
+
+      <!-- Quick Slide Selector Dropdown -->
+      <div class="flex items-center space-x-1.5">
+        <select 
+          id="slideSelectDropdown" 
+          onchange="jumpToSlide(parseInt(this.value))"
+          class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-medium rounded-lg px-2 py-1.5 focus:outline-none max-w-[130px] sm:max-w-xs truncate"
+        >
+          <!-- Options injected by JS -->
+        </select>
+      </div>
+
+      <button 
+        id="btnNextSlide" 
+        onclick="nextSlide()" 
+        class="inline-flex items-center justify-center space-x-1 px-3 sm:px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-bold transition shadow-sm shadow-brand-600/30 active:scale-95"
+      >
+        <span data-i18n="nextBtn">Keyingi</span>
+        <span>→</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Image Lightbox Modal -->
+  <div id="imageLightboxModal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden flex items-center justify-center p-3 sm:p-6" onclick="closeImageLightbox()">
+    <div class="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onclick="event.stopPropagation()">
+      <button onclick="closeImageLightbox()" class="absolute -top-9 right-0 text-white font-bold text-sm bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full">
+        ✕ <span data-i18n="closeBtn">Yopish</span>
+      </button>
+      <img id="lightboxImg" src="" alt="Slayd rasmi" class="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl bg-white/5" />
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white dark:bg-[#0c1322] border-t border-slate-200 dark:border-slate-800 mt-auto py-5 px-4 text-center text-xs text-slate-500 dark:text-slate-400">
+    <p data-i18n="footerText">
+      al-jabr.library — Shirin Energetika Texnikumi & ACWA Power 'Al-Jabr' xalqaro ta'lim dasturi kutubxonasi.
+    </p>
+  </footer>
+
+  <script src="translations.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

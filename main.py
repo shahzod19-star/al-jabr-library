@@ -214,13 +214,31 @@ def test_supabase(data: dict):
 
 @app.get("/")
 def serve_index():
+    root_index = os.path.join(os.path.dirname(__file__), "index.html")
+    if os.path.exists(root_index):
+        return FileResponse(root_index)
     return FileResponse(os.path.join(STATIC_DIR, "index.html"))
 
 
 @app.get("/admin")
 def serve_admin():
+    root_admin = os.path.join(os.path.dirname(__file__), "admin.html")
+    if os.path.exists(root_admin):
+        return FileResponse(root_admin)
     return FileResponse(os.path.join(STATIC_DIR, "admin.html"))
 
 
-# Mount static assets
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+@app.get("/{filename}.js")
+def serve_root_js(filename: str):
+    root_file = os.path.join(os.path.dirname(__file__), f"{filename}.js")
+    if os.path.exists(root_file):
+        return FileResponse(root_file, media_type="application/javascript")
+    static_file = os.path.join(STATIC_DIR, f"{filename}.js")
+    if os.path.exists(static_file):
+        return FileResponse(static_file, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="File not found")
+
+
+# Mount static assets if static dir exists
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
