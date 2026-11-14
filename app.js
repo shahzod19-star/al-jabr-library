@@ -206,7 +206,8 @@ function renderBooksCatalog(books) {
     const badgeLabel = isPpt ? "PPTX" : "PDF";
 
     const card = document.createElement("div");
-    card.className = "bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 hover:shadow-lg hover:border-brand-500/50 dark:hover:border-brand-500/50 transition flex flex-col justify-between group";
+    card.className = "bg-white dark:bg-slate-900/90 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 hover:border-brand-500/60 dark:hover:border-brand-500/60 transition flex flex-col justify-between cursor-pointer active:scale-[0.98] select-none touch-manipulation";
+    card.onclick = () => openReader(book.id, 1);
     card.innerHTML = `
       <div>
         <div class="flex items-center justify-between mb-2.5">
@@ -217,7 +218,7 @@ function renderBooksCatalog(books) {
             ${book.slide_count || 0} ${t("slidesCount")}
           </span>
         </div>
-        <h4 class="font-extrabold text-slate-900 dark:text-slate-100 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition text-sm sm:text-base line-clamp-2 mb-1.5 leading-snug">
+        <h4 class="font-extrabold text-slate-900 dark:text-slate-100 text-sm sm:text-base line-clamp-2 mb-1.5 leading-snug">
           ${escapeHtml(book.title)}
         </h4>
         <p class="text-[11px] text-slate-400 dark:text-slate-500 line-clamp-1">
@@ -228,8 +229,9 @@ function renderBooksCatalog(books) {
       <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between">
         <span class="text-[11px] font-medium text-slate-400 dark:text-slate-500">${t("readyToRead")}</span>
         <button 
-          onclick="openReader('${book.id}', 1)"
-          class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 hover:bg-brand-600 hover:text-white dark:hover:bg-brand-600 font-bold text-xs transition active:scale-95 shadow-xs"
+          type="button"
+          onclick="event.stopPropagation(); openReader('${book.id}', 1)"
+          class="inline-flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-brand-600 text-white font-bold text-xs transition active:scale-95 shadow-xs touch-manipulation cursor-pointer"
         >
           <span>${t("readBtn")}</span>
           <span>📖</span>
@@ -265,7 +267,8 @@ function renderSearchResults(results, query) {
     const badgeLabel = isPpt ? "PPTX" : "PDF";
 
     const itemEl = document.createElement("div");
-    itemEl.className = "bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-4 hover:border-brand-400 dark:hover:border-brand-500/60 hover:shadow-md transition flex flex-col sm:flex-row sm:items-center justify-between gap-3";
+    itemEl.className = "bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 sm:p-4 hover:border-brand-400 dark:hover:border-brand-500/60 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer active:scale-[0.99] select-none touch-manipulation";
+    itemEl.onclick = () => openReader(item.book_id, item.slide_number, query);
 
     const highlightedSnippet = highlightText(item.snippet, query);
 
@@ -291,8 +294,9 @@ function renderSearchResults(results, query) {
 
       <div class="shrink-0 flex sm:flex-col justify-end">
         <button 
-          onclick="openReader('${item.book_id}', ${item.slide_number}, '${escapeHtml(query)}')"
-          class="w-full sm:w-auto inline-flex items-center justify-center space-x-1 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs shadow-sm shadow-brand-600/30 transition active:scale-95"
+          type="button"
+          onclick="event.stopPropagation(); openReader('${item.book_id}', ${item.slide_number}, '${escapeHtml(query)}')"
+          class="w-full sm:w-auto inline-flex items-center justify-center space-x-1 px-4 py-2 rounded-xl bg-brand-600 text-white font-bold text-xs shadow-sm shadow-brand-600/30 transition active:scale-95 touch-manipulation cursor-pointer"
         >
           <span>${t("readBtn")}</span>
           <span>→</span>

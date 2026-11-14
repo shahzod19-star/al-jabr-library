@@ -39,9 +39,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <style>
+    * {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
     body { 
       font-family: 'Plus Jakarta Sans', sans-serif;
-      -webkit-tap-highlight-color: transparent;
     }
     [dir="rtl"] {
       font-family: 'Cairo', sans-serif;
@@ -59,12 +62,30 @@
     }
     .slide-content-text {
       white-space: pre-wrap;
-      line-height: 1.8;
+      line-height: 1.85;
       word-break: break-word;
     }
     /* Hide scrollbars for pill bars */
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+    /* Fast touch response for mobile devices - no double-tap delay */
+    button, a, select, input, [role="button"] {
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+    button:active, a:active {
+      transform: scale(0.97);
+    }
+
+    /* Prevent sticky hover effects on touch screens */
+    @media (hover: none) and (pointer: coarse) {
+      .group:hover .group-hover\:text-brand-600 { color: inherit !important; }
+      .group:hover .group-hover\:text-brand-400 { color: inherit !important; }
+      .hover\:shadow-lg:hover { box-shadow: none !important; }
+      .hover\:border-brand-500\/50:hover { border-color: inherit !important; }
+      .hover\:scale-105:hover { transform: none !important; }
+    }
   </style>
 </head>
 <body class="bg-slate-50 dark:bg-[#090d16] text-slate-900 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
@@ -312,45 +333,51 @@
       </div>
 
       <!-- Main Slide View Area (Swipe-enabled on Mobile) -->
-      <div id="slideTouchArea" class="flex-1 flex flex-col bg-slate-200/60 dark:bg-[#060a12] p-2.5 sm:p-6 overflow-y-auto items-center justify-start sm:justify-center">
+      <div id="slideTouchArea" class="flex-1 w-full overflow-y-auto px-3 py-6 sm:px-6 sm:py-8 flex flex-col items-center">
         
         <!-- Slide Sheet -->
-        <div id="slideCard" class="w-full max-w-3xl min-h-[380px] bg-white dark:bg-[#0f172a] rounded-2xl sm:rounded-3xl shadow-xl border border-slate-200/80 dark:border-slate-800 p-4 sm:p-8 flex flex-col justify-between transition-all my-auto">
-          <div>
-            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5 mb-3.5">
-              <span id="slideHeaderNumber" class="text-[11px] font-bold px-2 py-0.5 rounded-md bg-brand-50 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300">
+        <div id="slideCard" class="w-full max-w-3xl bg-white dark:bg-[#0f172a] rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200/90 dark:border-emerald-500/20 p-5 sm:p-8 flex flex-col shrink-0 relative transition-all duration-150 my-auto">
+          
+          <!-- Top subtle energy accent line -->
+          <div class="h-1.5 w-[calc(100%+2.5rem)] sm:w-[calc(100%+4rem)] -mt-5 -mx-5 sm:-mt-8 sm:-mx-8 mb-5 sm:mb-6 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 rounded-t-2xl sm:rounded-t-3xl shrink-0"></div>
+
+          <div class="flex-1">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-4">
+              <span id="slideHeaderNumber" class="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/60 dark:border-emerald-800/60">
                 1-slayd
               </span>
-              <span id="slideFileFormat" class="text-[10px] text-slate-400 dark:text-slate-500 uppercase font-semibold">
+              <span id="slideFileFormat" class="text-[11px] text-slate-400 dark:text-slate-500 uppercase font-bold tracking-wider">
                 Taqdimot
               </span>
             </div>
 
             <!-- Slide Title -->
-            <h3 id="slideDisplayTitle" class="text-base sm:text-2xl font-extrabold text-slate-900 dark:text-white mb-3">
+            <h3 id="slideDisplayTitle" class="text-lg sm:text-2xl font-extrabold text-slate-900 dark:text-white mb-4 leading-tight">
               Sarlavha
             </h3>
 
             <!-- Slide Body Text -->
-            <div id="slideDisplayContent" class="slide-content-text text-slate-700 dark:text-slate-200 text-sm sm:text-base">
+            <div id="slideDisplayContent" class="slide-content-text text-slate-800 dark:text-slate-100 text-sm sm:text-base leading-relaxed break-words whitespace-pre-wrap">
               Matn yuklanmoqda...
             </div>
 
             <!-- Slide Images Gallery -->
-            <div id="slideImageGallery" class="mt-5 pt-4 border-t border-slate-100 dark:border-slate-800 hidden">
-              <h5 class="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+            <div id="slideImageGallery" class="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 hidden">
+              <h5 class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <span>🖼️</span> <span data-i18n="galleryTitle">Slayd Rasmlari va Grafikalari</span>
               </h5>
-              <div id="slideImagesContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+              <div id="slideImagesContainer" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3.5">
                 <!-- Images injected by JS -->
               </div>
             </div>
           </div>
 
           <!-- Bottom Footer Info -->
-          <div class="pt-4 mt-4 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 dark:text-slate-500 flex justify-between items-center">
-            <span id="slideBookFooterTitle" class="truncate max-w-[200px] sm:max-w-xs">Darslik</span>
-            <span class="font-bold text-brand-600 dark:text-brand-400">al-jabr.library</span>
+          <div class="pt-4 mt-6 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500 flex justify-between items-center shrink-0">
+            <span id="slideBookFooterTitle" class="truncate max-w-[200px] sm:max-w-xs font-medium">Darslik</span>
+            <span class="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <span>⚡</span> al-jabr.library
+            </span>
           </div>
         </div>
 
@@ -359,22 +386,23 @@
     </div>
 
     <!-- Reader Bottom Controls (Touch-Friendly Thumbs Bar) -->
-    <div class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 px-3 sm:px-4 py-2.5 flex items-center justify-between gap-2 shrink-0">
+    <div class="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-3 sm:px-6 py-3 flex items-center justify-between gap-2 shrink-0 z-30">
       <button 
         id="btnPrevSlide" 
+        type="button"
         onclick="prevSlide()" 
-        class="inline-flex items-center justify-center space-x-1 px-3 sm:px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-bold transition active:scale-95"
+        class="inline-flex items-center justify-center space-x-1 px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 text-xs sm:text-sm font-bold transition active:scale-95 touch-manipulation cursor-pointer border border-slate-200 dark:border-slate-700 select-none"
       >
         <span>←</span>
         <span data-i18n="prevBtn">Oldingi</span>
       </button>
 
       <!-- Quick Slide Selector Dropdown -->
-      <div class="flex items-center space-x-1.5">
+      <div class="flex items-center space-x-1.5 flex-1 max-w-[200px] sm:max-w-xs justify-center">
         <select 
           id="slideSelectDropdown" 
           onchange="jumpToSlide(parseInt(this.value))"
-          class="bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs sm:text-sm font-medium rounded-lg px-2 py-1.5 focus:outline-none max-w-[130px] sm:max-w-xs truncate"
+          class="w-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-xs sm:text-sm font-semibold rounded-xl px-2.5 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 truncate cursor-pointer touch-manipulation"
         >
           <!-- Options injected by JS -->
         </select>
@@ -382,8 +410,9 @@
 
       <button 
         id="btnNextSlide" 
+        type="button"
         onclick="nextSlide()" 
-        class="inline-flex items-center justify-center space-x-1 px-3 sm:px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs sm:text-sm font-bold transition shadow-sm shadow-brand-600/30 active:scale-95"
+        class="inline-flex items-center justify-center space-x-1 px-4 py-2 rounded-xl bg-brand-600 text-white text-xs sm:text-sm font-bold transition shadow-md shadow-brand-600/30 active:scale-95 touch-manipulation cursor-pointer select-none"
       >
         <span data-i18n="nextBtn">Keyingi</span>
         <span>→</span>
