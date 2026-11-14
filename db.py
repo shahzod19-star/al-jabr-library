@@ -26,12 +26,27 @@ DEFAULT_CONFIG = {
 
 def load_config() -> Dict[str, Any]:
     cfg = DEFAULT_CONFIG.copy()
-    if os.path.exists(CONFIG_PATH):
+    
+    # 1. Try bundled config.json in app directory
+    bundled_path = os.path.join(os.path.dirname(__file__), "config.json")
+    if os.path.exists(bundled_path):
+        try:
+            with open(bundled_path, "r", encoding="utf-8") as f:
+                loaded = json.load(f)
+                for k, v in loaded.items():
+                    if v:
+                        cfg[k] = v
+        except Exception:
+            pass
+
+    # 2. Try runtime config (/tmp/config.json) if updated at runtime
+    if os.path.exists(CONFIG_PATH) and CONFIG_PATH != bundled_path:
         try:
             with open(CONFIG_PATH, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
                 for k, v in loaded.items():
-                    cfg[k] = v
+                    if v:
+                        cfg[k] = v
         except Exception:
             pass
     
@@ -108,10 +123,14 @@ def clean_supabase_url(url: str) -> str:
     return url.rstrip("/")
 
 
+DEFAULT_SUPABASE_URL = "https://gjkmovgnqbominhfqevr.supabase.co"
+DEFAULT_SUPABASE_KEY = "sb_publishable_K9ulnAVpsuv0SuhjEkKCLQ_IqPJKt7r"
+
+
 def get_supabase_client():
     cfg = load_config()
-    url = clean_supabase_url(cfg.get("supabase_url", ""))
-    key = cfg.get("supabase_key", "").strip()
+    url = clean_supabase_url(cfg.get("supabase_url", "") or DEFAULT_SUPABASE_URL)
+    key = (cfg.get("supabase_key", "") or DEFAULT_SUPABASE_KEY).strip()
     if url and key:
         try:
             from supabase import create_client
@@ -228,11 +247,21 @@ def save_book_to_db(parsed_data: Dict[str, Any], original_filename: str) -> Dict
                     "created_at": now_str
                 })
             if batch:
-                for i in range(0, len(batch), 50):
-                    supabase.table("slides").insert(batch[i:i+50]).execute()
-            supabase_synced = True
-        except Exception as e:
-            print("Supabase-ga saqlashda xatolik:", e)
+                try:
+                    for i in range(0, len(batch), 50):
+                        supabase.table("slides").insert(batch[i:i+50]).execute()
+                    supabase_synced = True
+                except Exception as e:
+                    if "images" in str(e).lower() or "pgrst204" in str(e).lower():
+                        # Retry without images column if user hasn't added images column to Supabase
+                        no_img_batch = [{k: v for k, v in item.items() if k != "images"} for item in batch]
+                        for i in range(0, len(no_img_batch), 50):
+                            supabase.table("slides").insert(no_img_batch[i:i+50]).execute()
+                        supabase_synced = True
+                    else:
+                        print("Supabase-ga saqlashda xatolik:", e)
+        except Exception as outer_err:
+            print("Supabase umumiy xatolik:", outer_err)
 
     return {
         "id": book_id,

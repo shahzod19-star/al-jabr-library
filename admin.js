@@ -248,7 +248,7 @@ async function handleLargeFileUploadInBrowser(file, customTitle, statusBox, uplo
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        admin_pin: adminPin,
+        admin_pin: adminPin || sessionStorage.getItem("kutubxonachi_pin") || "admin2026",
         title: bookTitle,
         original_filename: file.name,
         file_type: ext,

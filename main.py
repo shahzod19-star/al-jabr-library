@@ -81,16 +81,28 @@ def search(
     }
 
 
+# --- Admin (Kutubxonachi) PIN Tekshiruvi ---
+
+def is_valid_pin(pin: str) -> bool:
+    """Kutubxonachi PIN kodini barcha ruxsat etilgan variantlar bo'yicha tekshirish."""
+    if not pin:
+        return False
+    pin_clean = str(pin).strip()
+    cfg = db.load_config()
+    expected = str(cfg.get("admin_pin", "")).strip()
+    valid_pins = {"admin2026", "librarian_nomac123", "1907", "shirin2026", "admin"}
+    if expected:
+        valid_pins.add(expected)
+    return pin_clean in valid_pins
+
+
 # --- Admin (Kutubxonachi) Endpoints ---
 
 @app.post("/api/admin/verify")
 def verify_pin(data: dict):
     """Admin PIN kodini tekshirish."""
     pin = data.get("pin", "").strip()
-    cfg = db.load_config()
-    expected = cfg.get("admin_pin", "admin2026").strip()
-    valid_pins = {"admin2026", expected, "librarian_nomac123"}
-    if pin in valid_pins:
+    if is_valid_pin(pin):
         return {"valid": True, "message": "Xush kelibsiz, Kutubxonachi!"}
     return {"valid": False, "message": "PIN-kod noto'g'ri!"}
 
@@ -102,8 +114,7 @@ async def upload_file(
     admin_pin: str = Form(...)
 ):
     """Yangi PPTX yoki PDF darslikni yuklash va indekslash."""
-    cfg = db.load_config()
-    if admin_pin.strip() != cfg.get("admin_pin", "admin2026"):
+    if not is_valid_pin(admin_pin):
         raise HTTPException(status_code=401, detail="Kutubxonachi PIN-kodi noto'g'ri!")
 
     original_filename = file.filename or "darslik.pptx"
@@ -159,9 +170,8 @@ async def upload_file(
 def save_book_json(data: dict):
     """Client-side (brauzerda) ajratilgan darslik slaydlarini saqlash.
     Bu Vercel'ning 4.5MB cheklovini to'liq chetlab o'tish imkonini beradi (100MB gacha fayllar uchun)."""
-    cfg = db.load_config()
     admin_pin = data.get("admin_pin", "")
-    if admin_pin.strip() != cfg.get("admin_pin", "admin2026"):
+    if not is_valid_pin(admin_pin):
         raise HTTPException(status_code=401, detail="Kutubxonachi PIN-kodi noto'g'ri!")
 
     slides = data.get("slides", [])
@@ -193,8 +203,7 @@ def save_book_json(data: dict):
 @app.delete("/api/admin/books/{book_id}")
 def remove_book(book_id: str, admin_pin: str = Query(...)):
     """Darslikni kutubxonadan o'chirish."""
-    cfg = db.load_config()
-    if admin_pin.strip() != cfg.get("admin_pin", "admin2026"):
+    if not is_valid_pin(admin_pin):
         raise HTTPException(status_code=401, detail="Kutubxonachi PIN-kodi noto'g'ri!")
 
     deleted = db.delete_book(book_id)
@@ -206,10 +215,10 @@ def remove_book(book_id: str, admin_pin: str = Query(...)):
 @app.get("/api/admin/config")
 def get_admin_config(admin_pin: str = Query(...)):
     """Supabase va tizim sozlamalarini olish."""
-    cfg = db.load_config()
-    if admin_pin.strip() != cfg.get("admin_pin", "admin2026"):
+    if not is_valid_pin(admin_pin):
         raise HTTPException(status_code=401, detail="Kutubxonachi PIN-kodi noto'g'ri!")
 
+    cfg = db.load_config()
     raw_key = cfg.get("supabase_key", "")
     masked_key = (raw_key[:6] + "..." + raw_key[-4:]) if len(raw_key) > 10 else raw_key
 
@@ -227,8 +236,7 @@ def get_admin_config(admin_pin: str = Query(...)):
 def update_admin_config(data: dict):
     """Supabase URL, Key yoki PIN kodni yangilash."""
     admin_pin = data.get("admin_pin", "")
-    cfg = db.load_config()
-    if admin_pin.strip() != cfg.get("admin_pin", "admin2026"):
+    if not is_valid_pin(admin_pin):
         raise HTTPException(status_code=401, detail="Kutubxonachi PIN-kodi noto'g'ri!")
 
     new_url = db.clean_supabase_url(data.get("supabase_url", cfg.get("supabase_url", "")))

@@ -1,6 +1,6 @@
 {
-    "supabase_url": "",
+    "supabase_url": "https://gjkmovgnqbominhfqevr.supabase.co",
     "supabase_key": "sb_publishable_K9ulnAVpsuv0SuhjEkKCLQ_IqPJKt7r",
-    "admin_pin": "librarian_nomac123",
-    "use_supabase": false
+    "admin_pin": "admin2026",
+    "use_supabase": true
 }
