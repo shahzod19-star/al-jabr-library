@@ -5,18 +5,16 @@ from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Header, Depe
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
 import db
-import extractor
 
 app = FastAPI(
-    title="Ochiq Darsliklar Kutubxonasi",
-    description="Talabalar va o'quvchilar uchun ochiq darsliklar va aqlli qidiruv tizimi",
+    title="al-jabr.library",
+    description="Shirin Energy Technical College Knowledge Base",
     version="1.0.0"
 )
 
-# CORS enabled for flexible client access
+# CORS enabled
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,11 +23,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-IS_VERCEL = os.environ.get("VERCEL") == "1"
-UPLOAD_DIR = "/tmp/uploads" if IS_VERCEL else os.path.join(os.path.dirname(__file__), "uploads")
-STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(STATIC_DIR, exist_ok=True)
+# Safe Directory Setup (Vercel-compatible: never write to read-only paths)
+IS_VERCEL = bool(os.environ.get("VERCEL") or os.environ.get("AWS_LAMBDA_FUNCTION_NAME"))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+
+if IS_VERCEL:
+    UPLOAD_DIR = "/tmp/uploads"
+else:
+    UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+
+try:
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+except Exception:
+    pass
 
 
 # Dependency to verify Admin PIN
@@ -51,7 +58,7 @@ def get_books():
 
 @app.get("/api/books/{book_id}")
 def get_book_by_id(book_id: str):
-    """Tanlangan darslikning barcha slaydlari va to'liq matnini brauzerda o'qish uchun olish."""
+    """Tanlangan darslikning barcha slaydlari va matnini olish."""
     book = db.get_book_details(book_id)
     if not book:
         raise HTTPException(status_code=404, detail="Darslik topilmadi.")
@@ -103,6 +110,9 @@ async def upload_file(
     if ext not in [".pptx", ".ppt", ".pdf"]:
         raise HTTPException(status_code=400, detail="Faqat PPTX yoki PDF fayllar yuklanishi mumkin!")
 
+    # Lazy import extractor
+    import extractor
+
     # Save to uploads directory
     saved_path = os.path.join(UPLOAD_DIR, original_filename)
     try:
@@ -115,7 +125,10 @@ async def upload_file(
     try:
         import uuid
         temp_book_id = str(uuid.uuid4())[:8]
-        book_img_dir = os.path.join(STATIC_DIR, "images", temp_book_id)
+        if IS_VERCEL:
+            book_img_dir = f"/tmp/images/{temp_book_id}"
+        else:
+            book_img_dir = os.path.join(STATIC_DIR, "images", temp_book_id)
         img_url_prefix = f"/static/images/{temp_book_id}"
 
         extracted = extractor.extract_file_content(
@@ -160,11 +173,9 @@ def get_admin_config(admin_pin: str = Query(...)):
     if admin_pin.strip() != cfg.get("admin_pin", "admin2026"):
         raise HTTPException(status_code=401, detail="Kutubxonachi PIN-kodi noto'g'ri!")
 
-    # Mask the key for display security
     raw_key = cfg.get("supabase_key", "")
     masked_key = (raw_key[:6] + "..." + raw_key[-4:]) if len(raw_key) > 10 else raw_key
 
-    # Check connection status
     status = db.test_supabase_connection(cfg.get("supabase_url", ""), raw_key)
 
     return {
@@ -210,35 +221,35 @@ def test_supabase(data: dict):
     return db.test_supabase_connection(url, key)
 
 
-# --- HTML & Static Routes ---
+# --- HTML & Static Serving (Works in all environments) ---
 
 @app.get("/")
 def serve_index():
-    root_index = os.path.join(os.path.dirname(__file__), "index.html")
-    if os.path.exists(root_index):
-        return FileResponse(root_index)
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    for candidate in [os.path.join(BASE_DIR, "index.html"), os.path.join(STATIC_DIR, "index.html")]:
+        if os.path.exists(candidate):
+            return FileResponse(candidate)
+    return JSONResponse({"status": "ok", "app": "al-jabr.library", "message": "index.html not found"})
 
 
 @app.get("/admin")
 def serve_admin():
-    root_admin = os.path.join(os.path.dirname(__file__), "admin.html")
-    if os.path.exists(root_admin):
-        return FileResponse(root_admin)
-    return FileResponse(os.path.join(STATIC_DIR, "admin.html"))
+    for candidate in [os.path.join(BASE_DIR, "admin.html"), os.path.join(STATIC_DIR, "admin.html")]:
+        if os.path.exists(candidate):
+            return FileResponse(candidate)
+    return JSONResponse({"status": "ok", "app": "al-jabr.library admin", "message": "admin.html not found"})
 
 
 @app.get("/{filename}.js")
-def serve_root_js(filename: str):
-    root_file = os.path.join(os.path.dirname(__file__), f"{filename}.js")
-    if os.path.exists(root_file):
-        return FileResponse(root_file, media_type="application/javascript")
-    static_file = os.path.join(STATIC_DIR, f"{filename}.js")
-    if os.path.exists(static_file):
-        return FileResponse(static_file, media_type="application/javascript")
-    raise HTTPException(status_code=404, detail="File not found")
+def serve_js(filename: str):
+    for candidate in [os.path.join(BASE_DIR, f"{filename}.js"), os.path.join(STATIC_DIR, f"{filename}.js")]:
+        if os.path.exists(candidate):
+            return FileResponse(candidate, media_type="application/javascript")
+    raise HTTPException(status_code=404, detail=f"{filename}.js topilmadi")
 
 
-# Mount static assets if static dir exists
+# Mount static if it exists
 if os.path.exists(STATIC_DIR):
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    try:
+        app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    except Exception:
+        pass
