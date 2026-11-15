@@ -211,10 +211,17 @@ def save_book_to_db(parsed_data: Dict[str, Any], original_filename: str) -> Dict
         )
         for s in slides:
             slide_id = str(uuid.uuid4())
-            images_json = json.dumps(s.get("images", []))
+            slide_imgs = s.get("images", [])
+            imgs_json = json.dumps(slide_imgs) if isinstance(slide_imgs, list) else str(slide_imgs)
+            content_text = s.get("content", "")
+            if slide_imgs and "<!-- ALJABR_IMAGES:" not in content_text:
+                full_content = f"{content_text}\n\n<!-- ALJABR_IMAGES: {imgs_json} -->"
+            else:
+                full_content = content_text
+
             c.execute(
                 "INSERT INTO slides (id, book_id, slide_number, title, content, images, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (slide_id, book_id, s.get("slide_number", 1), s.get("title", ""), s.get("content", ""), images_json, now_str)
+                (slide_id, book_id, s.get("slide_number", 1), s.get("title", ""), full_content, imgs_json, now_str)
             )
         conn.commit()
         conn.close()
@@ -237,13 +244,21 @@ def save_book_to_db(parsed_data: Dict[str, Any], original_filename: str) -> Dict
 
             batch = []
             for s in slides:
+                slide_imgs = s.get("images", [])
+                imgs_json = json.dumps(slide_imgs) if isinstance(slide_imgs, list) else str(slide_imgs)
+                content_text = s.get("content", "")
+                if slide_imgs and "<!-- ALJABR_IMAGES:" not in content_text:
+                    full_content = f"{content_text}\n\n<!-- ALJABR_IMAGES: {imgs_json} -->"
+                else:
+                    full_content = content_text
+
                 batch.append({
                     "id": str(uuid.uuid4()),
                     "book_id": book_id,
                     "slide_number": s.get("slide_number", 1),
                     "title": s.get("title", ""),
-                    "content": s.get("content", ""),
-                    "images": json.dumps(s.get("images", [])),
+                    "content": full_content,
+                    "images": imgs_json,
                     "created_at": now_str
                 })
             if batch:
@@ -252,7 +267,7 @@ def save_book_to_db(parsed_data: Dict[str, Any], original_filename: str) -> Dict
                         supabase.table("slides").insert(batch[i:i+50]).execute()
                     supabase_synced = True
                 except Exception as e:
-                    if "images" in str(e).lower() or "pgrst204" in str(e).lower():
+                    if "images" in str(e).lower() or "pgrst204" in str(e).lower() or "42703" in str(e).lower():
                         # Retry without images column if user hasn't added images column to Supabase
                         no_img_batch = [{k: v for k, v in item.items() if k != "images"} for item in batch]
                         for i in range(0, len(no_img_batch), 50):
@@ -304,11 +319,30 @@ def get_book_details(book_id: str) -> Optional[Dict[str, Any]]:
                 book = b_res.data
                 raw_slides = s_res.data or []
                 for s in raw_slides:
-                    if isinstance(s.get("images"), str):
-                        try:
-                            s["images"] = json.loads(s["images"])
-                        except Exception:
-                            s["images"] = []
+                    raw_content = s.get("content", "")
+                    images_list = []
+                    
+                    raw_imgs = s.get("images")
+                    if raw_imgs:
+                        if isinstance(raw_imgs, str):
+                            try:
+                                images_list = json.loads(raw_imgs)
+                            except Exception:
+                                images_list = []
+                        elif isinstance(raw_imgs, list):
+                            images_list = raw_imgs
+
+                    # If images column was empty or absent, extract from content marker
+                    if not images_list and "<!-- ALJABR_IMAGES:" in raw_content:
+                        marker_match = re.search(r"<!--\s*ALJABR_IMAGES:\s*(.*?)\s*-->", raw_content, re.DOTALL)
+                        if marker_match:
+                            try:
+                                images_list = json.loads(marker_match.group(1))
+                                s["content"] = re.sub(r"\n\n<!--\s*ALJABR_IMAGES:.*?-->", "", raw_content, flags=re.DOTALL).strip()
+                            except Exception:
+                                pass
+                    
+                    s["images"] = images_list
                 book["slides"] = raw_slides
                 return book
         except Exception as e:
@@ -329,14 +363,28 @@ def get_book_details(book_id: str) -> Optional[Dict[str, Any]]:
         slides = []
         for r in c.fetchall():
             s = dict(r)
+            raw_content = s.get("content", "")
+            images_list = []
+            
             raw_imgs = s.get("images", "[]")
             if isinstance(raw_imgs, str):
                 try:
-                    s["images"] = json.loads(raw_imgs)
+                    images_list = json.loads(raw_imgs)
                 except Exception:
-                    s["images"] = []
-            elif not isinstance(raw_imgs, list):
-                s["images"] = []
+                    images_list = []
+            elif isinstance(raw_imgs, list):
+                images_list = raw_imgs
+
+            if not images_list and "<!-- ALJABR_IMAGES:" in raw_content:
+                marker_match = re.search(r"<!--\s*ALJABR_IMAGES:\s*(.*?)\s*-->", raw_content, re.DOTALL)
+                if marker_match:
+                    try:
+                        images_list = json.loads(marker_match.group(1))
+                        s["content"] = re.sub(r"\n\n<!--\s*ALJABR_IMAGES:.*?-->", "", raw_content, flags=re.DOTALL).strip()
+                    except Exception:
+                        pass
+
+            s["images"] = images_list
             slides.append(s)
         conn.close()
         book["slides"] = slides

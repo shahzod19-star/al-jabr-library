@@ -273,7 +273,61 @@ async function handleLargeFileUploadInBrowser(file, customTitle, statusBox, uplo
   }
 }
 
-// PPTX faylni brauzerda (JSZip) o'qish
+// Helper: compress an image blob into an efficient web JPEG data URI (reduces size by 90% while keeping high quality)
+async function compressImageBlob(uint8array, mimeType, maxWidth = 1000, quality = 0.8) {
+  return new Promise((resolve) => {
+    try {
+      const blob = new Blob([uint8array], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let w = img.naturalWidth || img.width;
+        let h = img.naturalHeight || img.height;
+        if (!w || !h) {
+          return resolve("");
+        }
+        if (w > maxWidth || h > maxWidth) {
+          if (w > h) {
+            h = Math.round((h * maxWidth) / w);
+            w = maxWidth;
+          } else {
+            w = Math.round((w * maxWidth) / h);
+            h = maxWidth;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        // Fallback: direct base64
+        try {
+          let binary = '';
+          const len = uint8array.byteLength;
+          for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(uint8array[i]);
+          }
+          resolve(`data:${mimeType};base64,${btoa(binary)}`);
+        } catch (b64Err) {
+          resolve("");
+        }
+      };
+      img.src = url;
+    } catch (e) {
+      resolve("");
+    }
+  });
+}
+
+// PPTX faylni brauzerda (JSZip) o'qish va rasmlarni ajratish
 async function parsePptxInBrowser(file, statusBox) {
   if (typeof JSZip === "undefined") {
     throw new Error("JSZip kutubxonasi yuklanmadi. Sahifani yangilab qayta urinib ko'ring.");
@@ -298,8 +352,8 @@ async function parsePptxInBrowser(file, statusBox) {
 
   for (let i = 0; i < slideFiles.length; i++) {
     const item = slideFiles[i];
-    if (statusBox && (i % 5 === 0 || i === slideFiles.length - 1)) {
-      statusBox.textContent = `Slaydlar o'qilmoqda: ${i + 1} / ${slideFiles.length}...`;
+    if (statusBox && (i % 3 === 0 || i === slideFiles.length - 1)) {
+      statusBox.textContent = `Slaydlar va rasmlar o'qilmoqda: ${i + 1} / ${slideFiles.length}...`;
     }
 
     const xml = await item.entry.async("text");
@@ -316,18 +370,62 @@ async function parsePptxInBrowser(file, statusBox) {
     const slideTitle = paragraphs.length > 0 ? paragraphs[0] : `${item.num}-slayd`;
     const slideContent = paragraphs.join("\n\n");
 
+    // Slayd rasmlarini rels faylidan ajratib olish
+    const slideImages = [];
+    try {
+      const relPath = `ppt/slides/_rels/slide${item.num}.xml.rels`;
+      const relEntry = zip.file(relPath);
+      if (relEntry) {
+        const relXml = await relEntry.async("text");
+        const relRegex = /<Relationship[^>]+Type="[^"]*\/relationships\/image"[^>]+Target="([^"]+)"/gi;
+        let match;
+        const seenTargets = new Set();
+        while ((match = relRegex.exec(relXml)) !== null) {
+          let target = match[1];
+          if (seenTargets.has(target)) continue;
+          seenTargets.add(target);
+
+          // "../media/imageX.png" -> "ppt/media/imageX.png"
+          let mediaPath = target;
+          if (mediaPath.startsWith("../")) {
+            mediaPath = "ppt/" + mediaPath.substring(3);
+          } else if (mediaPath.startsWith("media/")) {
+            mediaPath = "ppt/" + mediaPath;
+          } else if (!mediaPath.startsWith("ppt/")) {
+            mediaPath = "ppt/media/" + mediaPath.split("/").pop();
+          }
+
+          const imgZipEntry = zip.file(mediaPath);
+          if (imgZipEntry) {
+            const u8 = await imgZipEntry.async("uint8array");
+            // Kichik piktogramma va spacerlarni filtrlash (>= 3500 bayt)
+            if (u8.length >= 3500) {
+              const ext = mediaPath.split('.').pop().toLowerCase();
+              const mime = (ext === 'png') ? 'image/png' : ((ext === 'jpg' || ext === 'jpeg') ? 'image/jpeg' : 'image/png');
+              const dataUri = await compressImageBlob(u8, mime, 1000, 0.8);
+              if (dataUri && dataUri.length > 100) {
+                slideImages.push(dataUri);
+              }
+            }
+          }
+        }
+      }
+    } catch (imgErr) {
+      console.warn(`Slayd ${item.num} rasmlarini o'qishda xatolik:`, imgErr);
+    }
+
     slides.push({
       slide_number: item.num,
       title: slideTitle.slice(0, 150),
       content: slideContent,
-      images: []
+      images: slideImages
     });
   }
 
   return slides;
 }
 
-// PDF faylni brauzerda (PDF.js) o'qish
+// PDF faylni brauzerda (PDF.js) o'qish va sahifa tasvirlarini ajratish
 async function parsePdfInBrowser(file, statusBox) {
   if (typeof pdfjsLib === "undefined") {
     throw new Error("PDF.js kutubxonasi yuklanmadi. Sahifani yangilab qayta urinib ko'ring.");
@@ -338,8 +436,8 @@ async function parsePdfInBrowser(file, statusBox) {
   const slides = [];
 
   for (let i = 1; i <= pdf.numPages; i++) {
-    if (statusBox && (i % 5 === 0 || i === pdf.numPages)) {
-      statusBox.textContent = `PDF sahifalari o'qilmoqda: ${i} / ${pdf.numPages}...`;
+    if (statusBox && (i % 3 === 0 || i === pdf.numPages)) {
+      statusBox.textContent = `PDF sahifalari va rasmlari o'qilmoqda: ${i} / ${pdf.numPages}...`;
     }
 
     const page = await pdf.getPage(i);
@@ -348,11 +446,29 @@ async function parsePdfInBrowser(file, statusBox) {
     const pageTitle = strings.length > 0 && strings[0].length <= 120 ? strings[0] : `${i}-sahifa`;
     const pageContent = strings.join("\n");
 
+    const pageImages = [];
+    try {
+      const viewport = page.getViewport({ scale: 1.0 });
+      const scale = Math.min(1.2, 900 / (viewport.width || 600));
+      const scaledViewport = page.getViewport({ scale: scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = scaledViewport.width;
+      canvas.height = scaledViewport.height;
+      const ctx = canvas.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport: scaledViewport }).promise;
+      const pageDataUri = canvas.toDataURL("image/jpeg", 0.75);
+      if (pageDataUri && pageDataUri.length > 1000) {
+        pageImages.push(pageDataUri);
+      }
+    } catch (pdfImgErr) {
+      console.warn(`PDF sahifa ${i} rasmini chizishda ogohlantirish:`, pdfImgErr);
+    }
+
     slides.push({
       slide_number: i,
       title: pageTitle,
       content: pageContent,
-      images: []
+      images: pageImages
     });
   }
 

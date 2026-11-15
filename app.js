@@ -500,7 +500,29 @@ function updateSlideDisplay(highlightWord = '') {
   }
   contentEl.style.fontSize = `${currentFontSize}px`;
 
-  renderSlideImages(slide.images || []);
+  // Extract images from slide.images OR slide.content marker
+  let slideImgs = slide.images || [];
+  if (typeof slideImgs === "string") {
+    try { slideImgs = JSON.parse(slideImgs); } catch(e) { slideImgs = []; }
+  }
+
+  // Fallback: check if content has embedded image markers or markdown data URIs
+  if ((!slideImgs || slideImgs.length === 0) && slide.content) {
+    const markerMatch = slide.content.match(/<!--\s*ALJABR_IMAGES:\s*(.*?)\s*-->/s);
+    if (markerMatch) {
+      try {
+        slideImgs = JSON.parse(markerMatch[1]);
+      } catch(e) {}
+    }
+    if (!slideImgs || slideImgs.length === 0) {
+      const mdMatches = slide.content.matchAll(/!\[.*?\]\((data:image\/[^)]+|https?:\/\/[^)]+)\)/g);
+      for (const m of mdMatches) {
+        if (m[1]) slideImgs.push(m[1]);
+      }
+    }
+  }
+
+  renderSlideImages(slideImgs);
 
   document.getElementById("btnPrevSlide").disabled = (currentSlideIndex === 0);
   document.getElementById("btnPrevSlide").classList.toggle("opacity-40", currentSlideIndex === 0);
@@ -530,24 +552,54 @@ function renderSlideImages(images) {
   if (!gallery || !container) return;
   container.innerHTML = "";
 
-  if (!images || images.length === 0) {
+  let list = [];
+  if (Array.isArray(images)) {
+    list = images;
+  } else if (typeof images === "string" && images.trim().startsWith("[")) {
+    try { list = JSON.parse(images); } catch(e) { list = []; }
+  }
+
+  list = list.filter(img => img && typeof img === "string" && img.trim().length > 0);
+
+  if (list.length === 0) {
     gallery.classList.add("hidden");
     return;
   }
 
   gallery.classList.remove("hidden");
-  images.forEach((imgUrl, i) => {
-    const card = document.createElement("div");
-    card.className = "group relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 cursor-pointer shadow-xs hover:shadow-md transition aspect-video flex items-center justify-center";
-    card.onclick = () => openImageLightbox(imgUrl);
-    card.innerHTML = `
-      <img src="${imgUrl}" alt="Slayd rasmi ${i+1}" class="w-full h-full object-contain p-1 group-hover:scale-105 transition" loading="lazy" />
-      <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-[11px] font-bold">
-        <span>${t("openLightbox")} 🔍</span>
+
+  // Agar 1 ta rasm bo'lsa: to'liq hajmda chiroyli moslangan markaziy rasm
+  if (list.length === 1) {
+    container.className = "flex flex-col items-center justify-center my-3";
+    const imgUrl = list[0];
+    const wrapper = document.createElement("div");
+    wrapper.className = "w-full max-w-2xl rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-2 sm:p-3 shadow-xs hover:shadow-md transition cursor-pointer group flex flex-col items-center";
+    wrapper.onclick = () => openImageLightbox(imgUrl);
+    wrapper.innerHTML = `
+      <img src="${imgUrl}" alt="Slayd rasmi" class="max-w-full max-h-[480px] object-contain rounded-xl group-hover:scale-[1.01] transition" loading="lazy" onerror="this.parentElement.style.display='none'" />
+      <div class="mt-2 text-[11px] text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">
+        <span>🔍</span> <span>To'liq hajmda ko'rish uchun bosing</span>
       </div>
     `;
-    container.appendChild(card);
-  });
+    container.appendChild(wrapper);
+  } else {
+    // 2 yoki undan ortiq rasm: qulay va moslangan 2 ustunli to'r
+    container.className = "grid grid-cols-1 sm:grid-cols-2 gap-3.5 my-3";
+    list.forEach((imgUrl, i) => {
+      const card = document.createElement("div");
+      card.className = "rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60 p-2.5 shadow-xs hover:shadow-md transition cursor-pointer group flex flex-col items-center justify-between";
+      card.onclick = () => openImageLightbox(imgUrl);
+      card.innerHTML = `
+        <div class="w-full h-56 sm:h-64 flex items-center justify-center overflow-hidden rounded-xl bg-white dark:bg-slate-950/40 p-1">
+          <img src="${imgUrl}" alt="Slayd rasmi ${i+1}" class="max-w-full max-h-full object-contain group-hover:scale-105 transition" loading="lazy" onerror="this.closest('.rounded-2xl').style.display='none'" />
+        </div>
+        <div class="mt-2 text-[11px] text-slate-400 dark:text-slate-500 font-medium flex items-center gap-1 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition">
+          <span>🔍</span> <span>${i+1}-rasmni kattalashtirish</span>
+        </div>
+      `;
+      container.appendChild(card);
+    });
+  }
 }
 
 function openImageLightbox(src) {
@@ -600,6 +652,10 @@ function closeReader() {
 // --- Content Formatter (Links & YouTube Video Player) ---
 function formatSlideContent(text, highlightWord) {
   if (!text) return "";
+
+  // Strip internal image markers and raw markdown data URIs so they don't appear in text
+  text = text.replace(/<!--\s*ALJABR_IMAGES:.*?-->/gs, "").trim();
+  text = text.replace(/!\[.*?\]\(data:image\/[^)]+\)/g, "").trim();
 
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
